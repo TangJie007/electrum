@@ -1,0 +1,27 @@
+# Spec 文件: 三钩子接口与并行执行
+# 模块: 生命周期
+# 生成时间: 2026-07-14
+# 版本: 1.0.0
+
+spec:
+  id: "生命周期-三钩子接口与并行执行"
+  name: "三钩子接口与并行执行"
+  module: "生命周期"
+  description: "OnModuleInit/OnAppReady/OnModuleDestroy；LifecycleManager 对已注册实例 Promise.allSettled 调用"
+  status: "draft"
+  priority: "high"
+  tags: []
+  acceptance:
+  - "实现对应方法的 Controller/Provider 会被调用"
+  - "单钩子失败不影响其他实例，且记录 error 日志"
+  - "钩子可为 sync 或 async"
+  dependencies: []
+  notes: ""
+  changelog:
+    - date: "2026-07-14"
+      author: "AI"
+      summary: "初始版本，由 PRD 解析生成"
+      changes:
+        - "全量生成"
+  version: "1.0.0"
+  updated_at: "2026-07-14"

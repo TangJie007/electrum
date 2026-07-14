@@ -1,0 +1,27 @@
+# Spec 文件: IPC 参数位置约定
+# 模块: IPC 桥接
+# 生成时间: 2026-07-14
+# 版本: 1.0.0
+
+spec:
+  id: "IPC 桥接-IPC 参数位置约定"
+  name: "IPC 参数位置约定"
+  module: "IPC 桥接"
+  description: "无参数装饰器：Handle 参数即 invoke args；On 首参为 IpcMainEvent，其余为 send args"
+  status: "draft"
+  priority: "high"
+  tags: []
+  acceptance:
+  - "IpcHandle 回调不把 event 作为业务首参传入方法"
+  - "IpcOn 方法收到 (event, ...args)"
+  - "Handle 走完整中间件管道；On 走 Guard-only（中间件到位后）"
+  dependencies: []
+  notes: ""
+  changelog:
+    - date: "2026-07-14"
+      author: "AI"
+      summary: "初始版本，由 PRD 解析生成"
+      changes:
+        - "全量生成"
+  version: "1.0.0"
+  updated_at: "2026-07-14"

@@ -1,11 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import '../polyfill'
-import { Module } from '../decorators/module.decorator'
-import { Injectable } from '../decorators/injectable.decorator'
-import { Controller } from '../decorators/controller.decorator'
-import { IpcHandle } from '../decorators/ipc.decorator'
-import { Inject } from '../decorators/inject.decorator'
-import { META, readMetadata } from '../constants/metadata-keys'
+import {
+  Module,
+  Injectable,
+  Controller,
+  IpcHandle,
+  Inject,
+  META,
+  readMetadata,
+} from '@electrum/common'
 
 @Injectable()
 class TestService {}

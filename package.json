@@ -2,15 +2,18 @@
   "name": "electrum",
   "version": "0.1.0",
   "private": true,
-  "description": "NestJS-inspired MVC framework for Electron, powered by TS5 native decorators",
+  "description": "NestJS-inspired MVC framework for Electron (@electrum/*)",
   "scripts": {
-    "build": "pnpm --filter electron-mvc build",
+    "build": "pnpm --filter @electrum/common --filter @electrum/core --filter @electrum/testing run build",
     "dev:example": "pnpm --filter @electrum/example-basic dev",
     "build:example": "pnpm --filter @electrum/example-basic build",
-    "test": "pnpm --filter electron-mvc test"
+    "test": "pnpm --filter @electrum/common --filter @electrum/core run test"
   },
   "engines": {
     "node": ">=18"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "@wetspace/wetspec-cli": "^1.2.2"
+  }
 }

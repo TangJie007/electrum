@@ -1,0 +1,27 @@
+# Spec 文件: Controller HMR 热重载
+# 模块: HMR 与开发体验
+# 生成时间: 2026-07-14
+# 版本: 1.0.0
+
+spec:
+  id: "HMR 与开发体验-Controller HMR 热重载"
+  name: "Controller HMR 热重载"
+  module: "HMR 与开发体验"
+  description: "开发态监视路径变更后清 require.cache 并 app.reload，重新注册 IPC"
+  status: "draft"
+  priority: "low"
+  tags: []
+  acceptance:
+  - "文件变更触发 reload"
+  - "reload 成功后新 Handler 生效"
+  - "失败时记录错误且进程不崩溃"
+  dependencies: []
+  notes: ""
+  changelog:
+    - date: "2026-07-14"
+      author: "AI"
+      summary: "初始版本，由 PRD 解析生成"
+      changes:
+        - "全量生成"
+  version: "1.0.0"
+  updated_at: "2026-07-14"

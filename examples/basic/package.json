@@ -2,7 +2,7 @@
   "name": "@electrum/example-basic",
   "version": "0.1.0",
   "private": true,
-  "description": "Basic Electron example using electron-mvc",
+  "description": "Basic Electron example using @electrum/core",
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
@@ -10,7 +10,8 @@
     "preview": "electron-vite preview"
   },
   "dependencies": {
-    "electron-mvc": "workspace:*"
+    "@electrum/common": "workspace:*",
+    "@electrum/core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

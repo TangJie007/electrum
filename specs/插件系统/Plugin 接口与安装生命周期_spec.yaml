@@ -1,0 +1,27 @@
+# Spec 文件: Plugin 接口与安装生命周期
+# 模块: 插件系统
+# 生成时间: 2026-07-14
+# 版本: 1.0.0
+
+spec:
+  id: "插件系统-Plugin 接口与安装生命周期"
+  name: "Plugin 接口与安装生命周期"
+  module: "插件系统"
+  description: "Plugin{name,install,ready?,destroy?}；app.use(plugin) 安装并在就绪/销毁时回调"
+  status: "draft"
+  priority: "low"
+  tags: []
+  acceptance:
+  - "install 在启动流程中被调用"
+  - "ready/destroy 按应用生命周期可选调用"
+  - "插件可访问 Application API"
+  dependencies: []
+  notes: ""
+  changelog:
+    - date: "2026-07-14"
+      author: "AI"
+      summary: "初始版本，由 PRD 解析生成"
+      changes:
+        - "全量生成"
+  version: "1.0.0"
+  updated_at: "2026-07-14"

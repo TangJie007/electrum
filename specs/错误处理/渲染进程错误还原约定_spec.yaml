@@ -1,0 +1,26 @@
+# Spec 文件: 渲染进程错误还原约定
+# 模块: 错误处理
+# 生成时间: 2026-07-14
+# 版本: 1.0.0
+
+spec:
+  id: "错误处理-渲染进程错误还原约定"
+  name: "渲染进程错误还原约定"
+  module: "错误处理"
+  description: "preload invoke 检测到 __error 响应时抛出带 code 的 IpcError"
+  status: "draft"
+  priority: "high"
+  tags: []
+  acceptance:
+  - "文档约定的 contextBridge api.invoke 可识别 __error"
+  - "抛出错误含 code、message、details"
+  dependencies: []
+  notes: ""
+  changelog:
+    - date: "2026-07-14"
+      author: "AI"
+      summary: "初始版本，由 PRD 解析生成"
+      changes:
+        - "全量生成"
+  version: "1.0.0"
+  updated_at: "2026-07-14"

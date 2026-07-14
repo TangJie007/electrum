@@ -1,0 +1,27 @@
+# Spec 文件: 中间件装饰器与全局注册
+# 模块: 中间件链
+# 生成时间: 2026-07-14
+# 版本: 1.0.0
+
+spec:
+  id: "中间件链-中间件装饰器与全局注册"
+  name: "中间件装饰器与全局注册"
+  module: "中间件链"
+  description: "@UseGuards/@UsePipes/@UseInterceptors/@UseFilters 支持 class/method；Application 提供 useGlobal* API"
+  status: "draft"
+  priority: "medium"
+  tags: []
+  acceptance:
+  - "类级与方法级均可挂载且执行顺序为 global→class→method"
+  - "app.useGlobalGuards/Pipes/Interceptors/Filters 对所有通道生效"
+  - "@IpcOn 仅执行 Guard 后调方法"
+  dependencies: []
+  notes: ""
+  changelog:
+    - date: "2026-07-14"
+      author: "AI"
+      summary: "初始版本，由 PRD 解析生成"
+      changes:
+        - "全量生成"
+  version: "1.0.0"
+  updated_at: "2026-07-14"

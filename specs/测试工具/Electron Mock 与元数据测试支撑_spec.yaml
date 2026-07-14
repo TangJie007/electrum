@@ -1,0 +1,26 @@
+# Spec 文件: Electron Mock 与元数据测试支撑
+# 模块: 测试工具
+# 生成时间: 2026-07-14
+# 版本: 1.0.0
+
+spec:
+  id: "测试工具-Electron Mock 与元数据测试支撑"
+  name: "Electron Mock 与元数据测试支撑"
+  module: "测试工具"
+  description: "提供 mockElectron；支持验证装饰器写入的 Symbol.metadata（Controller/IPC/INJECTIONS）"
+  status: "draft"
+  priority: "low"
+  tags: []
+  acceptance:
+  - "存在 mock-electron 能力供集成测 IPC/中间件"
+  - "可用 readMetadata 断言 META.CONTROLLER/IPC_HANDLE/INJECTIONS"
+  dependencies: []
+  notes: ""
+  changelog:
+    - date: "2026-07-14"
+      author: "AI"
+      summary: "初始版本，由 PRD 解析生成"
+      changes:
+        - "全量生成"
+  version: "1.0.0"
+  updated_at: "2026-07-14"

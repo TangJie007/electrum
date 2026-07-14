@@ -1,0 +1,27 @@
+# Spec 文件: IPC 与 App 事件方法装饰器
+# 模块: 装饰器系统
+# 生成时间: 2026-07-14
+# 版本: 1.0.0
+
+spec:
+  id: "装饰器系统-IPC 与 App 事件方法装饰器"
+  name: "IPC 与 App 事件方法装饰器"
+  module: "装饰器系统"
+  description: "@IpcHandle/@IpcOn/@AppEvent 以方法装饰器将通道或事件名登记到类元数据数组"
+  status: "draft"
+  priority: "high"
+  tags: []
+  acceptance:
+  - "@IpcHandle 支持可选 {devOnly}"
+  - "@IpcOn/@IpcHandle/@AppEvent 均按数组累积多条 entry"
+  - "元数据含 channel/event 与 method 名称"
+  dependencies: []
+  notes: ""
+  changelog:
+    - date: "2026-07-14"
+      author: "AI"
+      summary: "初始版本，由 PRD 解析生成"
+      changes:
+        - "全量生成"
+  version: "1.0.0"
+  updated_at: "2026-07-14"

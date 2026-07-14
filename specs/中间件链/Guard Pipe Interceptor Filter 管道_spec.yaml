@@ -1,0 +1,28 @@
+# Spec 文件: Guard Pipe Interceptor Filter 管道
+# 模块: 中间件链
+# 生成时间: 2026-07-14
+# 版本: 1.0.0
+
+spec:
+  id: "中间件链-Guard Pipe Interceptor Filter 管道"
+  name: "Guard Pipe Interceptor Filter 管道"
+  module: "中间件链"
+  description: "MiddlewarePipeline：Handle 路径 Guard→Pipe→洋葱 Interceptor→Controller，异常走 Filter；类级+方法级+全局合并"
+  status: "draft"
+  priority: "medium"
+  tags: []
+  acceptance:
+  - "Guard false 抛 ForbiddenException"
+  - "Pipe 对 args[0] 依次 transform"
+  - "Interceptor 洋葱包装 next"
+  - "Filter 返回 IpcErrorResponse；无 Filter 时有默认 INTERNAL/UNKNOWN"
+  dependencies: []
+  notes: ""
+  changelog:
+    - date: "2026-07-14"
+      author: "AI"
+      summary: "初始版本，由 PRD 解析生成"
+      changes:
+        - "全量生成"
+  version: "1.0.0"
+  updated_at: "2026-07-14"

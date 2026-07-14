@@ -1,0 +1,27 @@
+# Spec 文件: 分级上下文 Logger
+# 模块: 日志系统
+# 生成时间: 2026-07-14
+# 版本: 1.0.0
+
+spec:
+  id: "日志系统-分级上下文 Logger"
+  name: "分级上下文 Logger"
+  module: "日志系统"
+  description: "Logger 支持 debug/log/warn/error/verbose，全局 setLevel，带 context 前缀输出"
+  status: "draft"
+  priority: "high"
+  tags: []
+  acceptance:
+  - "低于全局级别的日志不输出"
+  - "输出格式含 [context]"
+  - "IpcBridge/Lifecycle 等组件可实例化并使用"
+  dependencies: []
+  notes: ""
+  changelog:
+    - date: "2026-07-14"
+      author: "AI"
+      summary: "初始版本，由 PRD 解析生成"
+      changes:
+        - "全量生成"
+  version: "1.0.0"
+  updated_at: "2026-07-14"

@@ -1,0 +1,463 @@
+{
+  "modules": [
+    {
+      "name": "包体系与工程化",
+      "features": [
+        {
+          "id": "PKG-001",
+          "name": "@electrum 分包模型",
+          "description": "对齐 NestJS 拆分为 @electrum/common（装饰器/接口/异常）、@electrum/core（运行时）、@electrum/testing；common 零运行时依赖且禁止反向依赖 core",
+          "priority": "high",
+          "acceptance": [
+            "packages 下存在 common/core/testing 三个作用域包",
+            "用户装饰器从 @electrum/common 导入，createApp 从 @electrum/core 导入",
+            "@electrum/common 的 dependencies 为空，peer 为 typescript>=5.2",
+            "core 依赖 common；testing 依赖 core+common；common 不依赖 core/testing"
+          ]
+        },
+        {
+          "id": "PKG-002",
+          "name": "Monorepo 构建与发布",
+          "description": "使用 pnpm workspace + turbo + tsup 构建，产出 CJS + .d.ts，满足 core <50KB、零运行时依赖目标",
+          "priority": "high",
+          "acceptance": [
+            "根目录配置 pnpm-workspace.yaml 与 turbo.json",
+            "各包可通过 tsup 构建出 format cjs、dts:true",
+            "构建产物不引入 reflect-metadata 等运行时依赖",
+            "发布命名与 exports 对齐文档中的 package.json 示意"
+          ]
+        },
+        {
+          "id": "PKG-003",
+          "name": "TS5 原生装饰器工程配置",
+          "description": "仓库与示例 tsconfig 启用 Stage 3 装饰器，禁用 experimentalDecorators/emitDecoratorMetadata",
+          "priority": "high",
+          "acceptance": [
+            "未启用 experimentalDecorators 与 emitDecoratorMetadata",
+            "lib 包含 ESNext.Decorators，useDefineForClassFields 为 true",
+            "示例/包可在 TypeScript>=5.2 下正常编译装饰器代码"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "TS5 装饰器元数据机制",
+      "features": [
+        {
+          "id": "META-001",
+          "name": "Symbol.metadata Polyfill",
+          "description": "在 @electrum/common 入口确保 Symbol.metadata 存在，且必须在所有装饰器求值之前执行",
+          "priority": "high",
+          "acceptance": [
+            "common 提供 polyfill.ts 并用 Symbol.for('Symbol.metadata') 兜底",
+            "入口 re-export 使引用包时 polyfill 生效",
+            "无 Symbol.metadata 的运行时环境下装饰器写入后仍可读取 Class[Symbol.metadata]"
+          ]
+        },
+        {
+          "id": "META-002",
+          "name": "元数据 Key 与读取工具",
+          "description": "通过 Symbol.for 定义 META 键（MODULE/INJECTABLE/CONTROLLER/IPC/注入点/中间件等），并提供 getClassMetadata、readMetadata",
+          "priority": "high",
+          "acceptance": [
+            "META 常量覆盖文档列出的类/方法/属性/中间件 key",
+            "读写均经由 Class[Symbol.metadata]，不依赖 reflect-metadata",
+            "HMR 重载后 Symbol.for key 仍一致可读取"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "装饰器系统",
+      "features": [
+        {
+          "id": "DEC-001",
+          "name": "类装饰器 Module Injectable Controller",
+          "description": "TS5 类装饰器将模块配置、可注入作用域、Controller 通道前缀写入 context.metadata",
+          "priority": "high",
+          "acceptance": [
+            "@Module 写入 imports/controllers/providers/exports/declarations",
+            "@Injectable 支持 scope singleton|transient，默认 singleton",
+            "@Controller(prefix) 写入前缀，可与无前缀空串组合"
+          ]
+        },
+        {
+          "id": "DEC-002",
+          "name": "IPC 与 App 事件方法装饰器",
+          "description": "@IpcHandle/@IpcOn/@AppEvent 以方法装饰器将通道或事件名登记到类元数据数组",
+          "priority": "high",
+          "acceptance": [
+            "@IpcHandle 支持可选 {devOnly}",
+            "@IpcOn/@IpcHandle/@AppEvent 均按数组累积多条 entry",
+            "元数据含 channel/event 与 method 名称"
+          ]
+        },
+        {
+          "id": "DEC-003",
+          "name": "属性注入装饰器 Inject Optional WindowRef",
+          "description": "Field decorator 声明注入点，替代构造函数/参数装饰器；支持 token、可选注入与窗口引用",
+          "priority": "high",
+          "acceptance": [
+            "@Inject(token) 写入 INJECTIONS 列表 type=service",
+            "@Optional 与 @Inject 组合后该注入点 optional=true",
+            "@WindowRef(name) 使用 electrum:window:name token 且 type=window"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "依赖注入容器",
+      "features": [
+        {
+          "id": "DI-001",
+          "name": "属性注入解析",
+          "description": "DIContainer 无参 new 后读取 INJECTIONS，按 service/window/optional 递归 resolve 并赋值",
+          "priority": "high",
+          "acceptance": [
+            "支持 useValue/useClass/useFactory(+inject) 注册",
+            "window token 经 setWindowProvider 解析，缺失则抛错",
+            "optional 注入缺失时不抛错且字段保持 undefined"
+          ]
+        },
+        {
+          "id": "DI-002",
+          "name": "作用域与循环依赖检测",
+          "description": "支持 singleton/transient；resolving Set 检测环并抛出含完整解析链的错误",
+          "priority": "high",
+          "acceptance": [
+            "singleton 首次 resolve 后缓存，后续同实例",
+            "transient 每次 resolve 新实例",
+            "A→B→A 抛出 Circular dependency 且信息含解析链"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "模块系统",
+      "features": [
+        {
+          "id": "MOD-001",
+          "name": "ModuleScanner 模块树扫描",
+          "description": "从根 Module 递归 imports，读取 @Module 元数据，注册 providers 并收集 controllers/declarations",
+          "priority": "high",
+          "acceptance": [
+            "未装饰 @Module 的根类抛错",
+            "函数 Provider 读取 @Injectable.scope 后 register",
+            "Value/Class/Factory Provider 分别按约定注册",
+            "visited Set 避免重复扫描"
+          ]
+        },
+        {
+          "id": "MOD-002",
+          "name": "模块可见性与 exports",
+          "description": "providers 默认模块内可见，exports 后可被 imports 方使用",
+          "priority": "high",
+          "acceptance": [
+            "扫描结果保留 metadata.exports",
+            "导入模块可解析被导出的 Provider",
+            "未导出 Provider 对导入方不可见（按规则实现或测试约束）"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "IPC 桥接",
+      "features": [
+        {
+          "id": "IPC-001",
+          "name": "Controller 自动绑定 ipcMain",
+          "description": "IpcBridge 解析 Controller 实例，按 prefix 拼通道，绑定 @IpcHandle→handle、@IpcOn→on，并支持注销",
+          "priority": "high",
+          "acceptance": [
+            "@Controller('file')+@IpcHandle('read') 绑定 file:read",
+            "devOnly 通道在非开发环境跳过",
+            "重复通道 warn 并 skip",
+            "unregisterAll 移除全部 handler/listener"
+          ]
+        },
+        {
+          "id": "IPC-002",
+          "name": "IPC 参数位置约定",
+          "description": "无参数装饰器：Handle 参数即 invoke args；On 首参为 IpcMainEvent，其余为 send args",
+          "priority": "high",
+          "acceptance": [
+            "IpcHandle 回调不把 event 作为业务首参传入方法",
+            "IpcOn 方法收到 (event, ...args)",
+            "Handle 走完整中间件管道；On 走 Guard-only（中间件到位后）"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "生命周期",
+      "features": [
+        {
+          "id": "LIFE-001",
+          "name": "三钩子接口与并行执行",
+          "description": "OnModuleInit/OnAppReady/OnModuleDestroy；LifecycleManager 对已注册实例 Promise.allSettled 调用",
+          "priority": "high",
+          "acceptance": [
+            "实现对应方法的 Controller/Provider 会被调用",
+            "单钩子失败不影响其他实例，且记录 error 日志",
+            "钩子可为 sync 或 async"
+          ]
+        },
+        {
+          "id": "LIFE-002",
+          "name": "启动退出时序",
+          "description": "whenReady 后注册 IPC/Event/Window，再 onModuleInit→onAppReady；before-quit 触发 onModuleDestroy",
+          "priority": "high",
+          "acceptance": [
+            "启动顺序符合文档时序图",
+            "应用退出路径触发 onModuleDestroy"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "窗口管理",
+      "features": [
+        {
+          "id": "WIN-001",
+          "name": "声明式窗口创建与 DI 集成",
+          "description": "@WindowDeclaration + WindowManager.initialize：按 declarations 创建窗口，默认 autoCreate，并向 DI 注册 windowProvider 供 @WindowRef",
+          "priority": "medium",
+          "acceptance": [
+            "autoCreate!==false 时启动创建命名窗口",
+            "dev 用 devUrl+DevTools，prod 用 prodFile",
+            "closed 时从 Map 移除；getWindow/getAllWindows 可用",
+            "@WindowRef 可注入对应 BrowserWindow"
+          ]
+        },
+        {
+          "id": "WIN-002",
+          "name": "跨窗口通信",
+          "description": "WindowManager.sendTo 与 broadcast 向未销毁窗口 webContents.send",
+          "priority": "medium",
+          "acceptance": [
+            "sendTo 仅目标窗口收到消息",
+            "broadcast 所有存活窗口收到",
+            "窗口已 destroy 时不抛未捕获错误"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "事件系统",
+      "features": [
+        {
+          "id": "EVT-001",
+          "name": "EventBridge 绑定 AppEvent",
+          "description": "扫描 controllers+providers 的 @AppEvent 元数据，绑定到 electron app.on，异步错误捕获记日志",
+          "priority": "medium",
+          "acceptance": [
+            "@AppEvent('window-all-closed') 等方法在 app 事件触发时执行",
+            "Promise rejection 与同步 throw 均记 Logger.error",
+            "参数按 app.on 回调原样传递"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "中间件链",
+      "features": [
+        {
+          "id": "MW-001",
+          "name": "Guard Pipe Interceptor Filter 管道",
+          "description": "MiddlewarePipeline：Handle 路径 Guard→Pipe→洋葱 Interceptor→Controller，异常走 Filter；类级+方法级+全局合并",
+          "priority": "medium",
+          "acceptance": [
+            "Guard false 抛 ForbiddenException",
+            "Pipe 对 args[0] 依次 transform",
+            "Interceptor 洋葱包装 next",
+            "Filter 返回 IpcErrorResponse；无 Filter 时有默认 INTERNAL/UNKNOWN"
+          ]
+        },
+        {
+          "id": "MW-002",
+          "name": "中间件装饰器与全局注册",
+          "description": "@UseGuards/@UsePipes/@UseInterceptors/@UseFilters 支持 class/method；Application 提供 useGlobal* API",
+          "priority": "medium",
+          "acceptance": [
+            "类级与方法级均可挂载且执行顺序为 global→class→method",
+            "app.useGlobalGuards/Pipes/Interceptors/Filters 对所有通道生效",
+            "@IpcOn 仅执行 Guard 后调方法"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "错误处理",
+      "features": [
+        {
+          "id": "ERR-001",
+          "name": "ElectronException 与 IpcErrorResponse",
+          "description": "统一错误基类与 NotFound/Forbidden/Validation；toJSON 产出 __error/code/message，开发态可带 stack",
+          "priority": "high",
+          "acceptance": [
+            "ElectronException.toJSON 含 __error:true",
+            "ValidationException 将 errors 放入 details",
+            "生产环境默认不暴露 stack，开发环境可暴露"
+          ]
+        },
+        {
+          "id": "ERR-002",
+          "name": "渲染进程错误还原约定",
+          "description": "preload invoke 检测到 __error 响应时抛出带 code 的 IpcError",
+          "priority": "high",
+          "acceptance": [
+            "文档约定的 contextBridge api.invoke 可识别 __error",
+            "抛出错误含 code、message、details"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "日志系统",
+      "features": [
+        {
+          "id": "LOG-001",
+          "name": "分级上下文 Logger",
+          "description": "Logger 支持 debug/log/warn/error/verbose，全局 setLevel，带 context 前缀输出",
+          "priority": "high",
+          "acceptance": [
+            "低于全局级别的日志不输出",
+            "输出格式含 [context]",
+            "IpcBridge/Lifecycle 等组件可实例化并使用"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "类型生成",
+      "features": [
+        {
+          "id": "TYPE-001",
+          "name": "渲染进程 api.d.ts 生成",
+          "description": "TypeGenerator 扫描 @IpcHandle 元数据生成 IpcApi/ElectronAPI 与 Window.api 声明；app.generateTypes(path) 可调用",
+          "priority": "medium",
+          "acceptance": [
+            "输出文件声明各 channel 的 invoke 签名骨架",
+            "declare global Window.api: ElectronAPI",
+            "开发启动路径可调用 generateTypes"
+          ]
+        },
+        {
+          "id": "TYPE-002",
+          "name": "ts-morph 精确类型与 Preload 生成",
+          "description": "从源码 AST 提取参数/返回类型；并生成 preload 脚本（路线图 v0.4）",
+          "priority": "medium",
+          "acceptance": [
+            "生成签名不再仅为 ...args:any[] / any",
+            "能产出可用的 preload 暴露脚本或明确生成产物路径"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "应用启动与 API",
+      "features": [
+        {
+          "id": "APP-001",
+          "name": "createApp 启动编排",
+          "description": "Application 串联 polyfill、DI、ModuleScanner、whenReady、IpcBridge、EventBridge、WindowManager、Lifecycle 钩子与 before-quit",
+          "priority": "high",
+          "acceptance": [
+            "createApp(AppModule).start() 可完成主进程就绪",
+            "启动步骤顺序符合文档第 0–9 步",
+            "未 ready 前不提前绑定业务 IPC 到不可用状态"
+          ]
+        },
+        {
+          "id": "APP-002",
+          "name": "Application 运行时 API",
+          "description": "提供 use/useGlobal*/generateTypes/reload/resolve/getWindowManager 等公共方法",
+          "priority": "high",
+          "acceptance": [
+            "app.resolve(token) 返回 DI 实例",
+            "app.getWindowManager() 返回窗口管理器",
+            "全局中间件与插件挂载 API 存在且可链式调用"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "HMR 与开发体验",
+      "features": [
+        {
+          "id": "DX-001",
+          "name": "Controller HMR 热重载",
+          "description": "开发态监视路径变更后清 require.cache 并 app.reload，重新注册 IPC",
+          "priority": "low",
+          "acceptance": [
+            "文件变更触发 reload",
+            "reload 成功后新 Handler 生效",
+            "失败时记录错误且进程不崩溃"
+          ]
+        },
+        {
+          "id": "DX-002",
+          "name": "electron-vite 集成预设",
+          "description": "提供与 electron-vite 开箱集成的开发预设（路线图 v0.5）",
+          "priority": "low",
+          "acceptance": [
+            "文档或包中存在可用的 electron-vite 集成方式",
+            "示例 basic 可在开发模式启动并联调"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "插件系统",
+      "features": [
+        {
+          "id": "PLG-001",
+          "name": "Plugin 接口与安装生命周期",
+          "description": "Plugin{name,install,ready?,destroy?}；app.use(plugin) 安装并在就绪/销毁时回调",
+          "priority": "low",
+          "acceptance": [
+            "install 在启动流程中被调用",
+            "ready/destroy 按应用生命周期可选调用",
+            "插件可访问 Application API"
+          ]
+        },
+        {
+          "id": "PLG-002",
+          "name": "官方插件包命名预留",
+          "description": "预留 @electrum/plugin-updater/tray/hotkey 等扩展包命名与接入方式（不进入 MVP）",
+          "priority": "low",
+          "acceptance": [
+            "文档/脚手架约定 plugin-* 包名",
+            "至少一个插件包可按 Plugin 接口演示接入"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "测试工具",
+      "features": [
+        {
+          "id": "TEST-001",
+          "name": "测试容器 createTestContainer",
+          "description": "@electrum/testing 提供 TestContainer：register/mock/resolve，脱离 Electron 测 Service",
+          "priority": "low",
+          "acceptance": [
+            "mock(token,value) 后 resolve 拿到 mock",
+            "可纯单测带 @Inject 的 Service",
+            "包可通过 vitest 运行文档示例级用例"
+          ]
+        },
+        {
+          "id": "TEST-002",
+          "name": "Electron Mock 与元数据测试支撑",
+          "description": "提供 mockElectron；支持验证装饰器写入的 Symbol.metadata（Controller/IPC/INJECTIONS）",
+          "priority": "low",
+          "acceptance": [
+            "存在 mock-electron 能力供集成测 IPC/中间件",
+            "可用 readMetadata 断言 META.CONTROLLER/IPC_HANDLE/INJECTIONS"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -7,8 +7,9 @@
 ## 结构
 
 ```
-packages/core     → npm 包 electron-mvc（框架本体）
-examples/basic    → Electron 示例应用
+packages/common   → @electrum/common（装饰器 / 接口 / 异常）
+packages/core     → @electrum/core（运行时：DI / IPC / Application）
+examples/basic    → @electrum/example-basic
 ```
 
 ## 快速开始
@@ -30,7 +31,14 @@ pnpm dev:example
 ## 最小用法
 
 ```ts
-import { createApp, Module, Controller, IpcHandle, Injectable, Inject } from 'electron-mvc'
+import {
+  Module,
+  Controller,
+  IpcHandle,
+  Injectable,
+  Inject,
+} from '@electrum/common'
+import { createApp } from '@electrum/core'
 
 @Injectable()
 class HelloService {

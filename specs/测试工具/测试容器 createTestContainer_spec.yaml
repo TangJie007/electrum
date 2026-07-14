@@ -1,0 +1,27 @@
+# Spec 文件: 测试容器 createTestContainer
+# 模块: 测试工具
+# 生成时间: 2026-07-14
+# 版本: 1.0.0
+
+spec:
+  id: "测试工具-测试容器 createTestContainer"
+  name: "测试容器 createTestContainer"
+  module: "测试工具"
+  description: "@electrum/testing 提供 TestContainer：register/mock/resolve，脱离 Electron 测 Service"
+  status: "draft"
+  priority: "low"
+  tags: []
+  acceptance:
+  - "mock(token,value) 后 resolve 拿到 mock"
+  - "可纯单测带 @Inject 的 Service"
+  - "包可通过 vitest 运行文档示例级用例"
+  dependencies: []
+  notes: ""
+  changelog:
+    - date: "2026-07-14"
+      author: "AI"
+      summary: "初始版本，由 PRD 解析生成"
+      changes:
+        - "全量生成"
+  version: "1.0.0"
+  updated_at: "2026-07-14"

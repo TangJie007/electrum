@@ -1,4 +1,4 @@
-import { Module, WindowDeclaration } from 'electron-mvc'
+import { Module, WindowDeclaration } from '@electrum/common'
 import { join } from 'node:path'
 
 @WindowDeclaration({

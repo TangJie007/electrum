@@ -1,0 +1,27 @@
+# Spec 文件: 渲染进程 api.d.ts 生成
+# 模块: 类型生成
+# 生成时间: 2026-07-14
+# 版本: 1.0.0
+
+spec:
+  id: "类型生成-渲染进程 api.d.ts 生成"
+  name: "渲染进程 api.d.ts 生成"
+  module: "类型生成"
+  description: "TypeGenerator 扫描 @IpcHandle 元数据生成 IpcApi/ElectronAPI 与 Window.api 声明；app.generateTypes(path) 可调用"
+  status: "draft"
+  priority: "medium"
+  tags: []
+  acceptance:
+  - "输出文件声明各 channel 的 invoke 签名骨架"
+  - "declare global Window.api: ElectronAPI"
+  - "开发启动路径可调用 generateTypes"
+  dependencies: []
+  notes: ""
+  changelog:
+    - date: "2026-07-14"
+      author: "AI"
+      summary: "初始版本，由 PRD 解析生成"
+      changes:
+        - "全量生成"
+  version: "1.0.0"
+  updated_at: "2026-07-14"

@@ -1,0 +1,28 @@
+# Spec 文件: ModuleScanner 模块树扫描
+# 模块: 模块系统
+# 生成时间: 2026-07-14
+# 版本: 1.0.0
+
+spec:
+  id: "模块系统-ModuleScanner 模块树扫描"
+  name: "ModuleScanner 模块树扫描"
+  module: "模块系统"
+  description: "从根 Module 递归 imports，读取 @Module 元数据，注册 providers 并收集 controllers/declarations"
+  status: "draft"
+  priority: "high"
+  tags: []
+  acceptance:
+  - "未装饰 @Module 的根类抛错"
+  - "函数 Provider 读取 @Injectable.scope 后 register"
+  - "Value/Class/Factory Provider 分别按约定注册"
+  - "visited Set 避免重复扫描"
+  dependencies: []
+  notes: ""
+  changelog:
+    - date: "2026-07-14"
+      author: "AI"
+      summary: "初始版本，由 PRD 解析生成"
+      changes:
+        - "全量生成"
+  version: "1.0.0"
+  updated_at: "2026-07-14"

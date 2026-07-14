@@ -1,0 +1,28 @@
+# Spec 文件: Monorepo 构建与发布
+# 模块: 包体系与工程化
+# 生成时间: 2026-07-14
+# 版本: 1.0.0
+
+spec:
+  id: "包体系与工程化-Monorepo 构建与发布"
+  name: "Monorepo 构建与发布"
+  module: "包体系与工程化"
+  description: "使用 pnpm workspace + turbo + tsup 构建，产出 CJS + .d.ts，满足 core <50KB、零运行时依赖目标"
+  status: "draft"
+  priority: "high"
+  tags: []
+  acceptance:
+  - "根目录配置 pnpm-workspace.yaml 与 turbo.json"
+  - "各包可通过 tsup 构建出 format cjs、dts:true"
+  - "构建产物不引入 reflect-metadata 等运行时依赖"
+  - "发布命名与 exports 对齐文档中的 package.json 示意"
+  dependencies: []
+  notes: ""
+  changelog:
+    - date: "2026-07-14"
+      author: "AI"
+      summary: "初始版本，由 PRD 解析生成"
+      changes:
+        - "全量生成"
+  version: "1.0.0"
+  updated_at: "2026-07-14"

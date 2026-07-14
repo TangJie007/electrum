@@ -1,6 +1,5 @@
-import { META, readMetadata } from '../constants/metadata-keys'
+import { META, readMetadata, type ModuleMetadata, type Provider } from '@electrum/common'
 import { DIContainer } from '../di/container'
-import type { ModuleMetadata, Provider } from '../decorators/module.decorator'
 
 export interface ScannedModule {
   moduleClass: Function

@@ -6,7 +6,7 @@ export function WindowRef(name = 'main') {
     const injections = (context.metadata![META.INJECTIONS] as InjectionPoint[]) || []
     injections.push({
       propertyKey: context.name,
-      token: Symbol.for(`emvc:window:${name}`),
+      token: Symbol.for(`electrum:window:${name}`),
       type: 'window',
       windowName: name,
     })

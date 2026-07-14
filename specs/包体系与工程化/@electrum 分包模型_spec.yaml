@@ -1,0 +1,28 @@
+# Spec 文件: @electrum 分包模型
+# 模块: 包体系与工程化
+# 生成时间: 2026-07-14
+# 版本: 1.0.0
+
+spec:
+  id: "包体系与工程化-@electrum 分包模型"
+  name: "@electrum 分包模型"
+  module: "包体系与工程化"
+  description: "对齐 NestJS 拆分为 @electrum/common（装饰器/接口/异常）、@electrum/core（运行时）、@electrum/testing；common 零运行时依赖且禁止反向依赖 core"
+  status: "draft"
+  priority: "high"
+  tags: []
+  acceptance:
+  - "packages 下存在 common/core/testing 三个作用域包"
+  - "用户装饰器从 @electrum/common 导入，createApp 从 @electrum/core 导入"
+  - "@electrum/common 的 dependencies 为空，peer 为 typescript>=5.2"
+  - "core 依赖 common；testing 依赖 core+common；common 不依赖 core/testing"
+  dependencies: []
+  notes: ""
+  changelog:
+    - date: "2026-07-14"
+      author: "AI"
+      summary: "初始版本，由 PRD 解析生成"
+      changes:
+        - "全量生成"
+  version: "1.0.0"
+  updated_at: "2026-07-14"

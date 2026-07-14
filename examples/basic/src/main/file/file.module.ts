@@ -1,4 +1,4 @@
-import { Module } from 'electron-mvc'
+import { Module } from '@electrum/common'
 import { FileController } from './file.controller'
 import { FileService } from './file.service'
 

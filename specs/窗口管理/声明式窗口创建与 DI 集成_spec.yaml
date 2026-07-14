@@ -1,0 +1,28 @@
+# Spec 文件: 声明式窗口创建与 DI 集成
+# 模块: 窗口管理
+# 生成时间: 2026-07-14
+# 版本: 1.0.0
+
+spec:
+  id: "窗口管理-声明式窗口创建与 DI 集成"
+  name: "声明式窗口创建与 DI 集成"
+  module: "窗口管理"
+  description: "@WindowDeclaration + WindowManager.initialize：按 declarations 创建窗口，默认 autoCreate，并向 DI 注册 windowProvider 供 @WindowRef"
+  status: "draft"
+  priority: "medium"
+  tags: []
+  acceptance:
+  - "autoCreate!==false 时启动创建命名窗口"
+  - "dev 用 devUrl+DevTools，prod 用 prodFile"
+  - "closed 时从 Map 移除；getWindow/getAllWindows 可用"
+  - "@WindowRef 可注入对应 BrowserWindow"
+  dependencies: []
+  notes: ""
+  changelog:
+    - date: "2026-07-14"
+      author: "AI"
+      summary: "初始版本，由 PRD 解析生成"
+      changes:
+        - "全量生成"
+  version: "1.0.0"
+  updated_at: "2026-07-14"

@@ -1,4 +1,4 @@
-import './polyfill'
+import { Logger } from '@electrum/common'
 import { app as electronApp } from 'electron'
 import { DIContainer } from './di/container'
 import { ModuleScanner, type ScannedModule } from './module/scanner'
@@ -8,7 +8,6 @@ import { EventBridge } from './bridge/event-bridge'
 import { WindowManager } from './window/manager'
 import { LifecycleManager } from './lifecycle/manager'
 import { TypeGenerator } from './type-generator/generator'
-import { Logger } from './logger/logger'
 import type { Plugin } from './plugin/plugin.interface'
 
 export class Application {

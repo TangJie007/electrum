@@ -1,6 +1,6 @@
+import { Logger } from '@electrum/common'
 import type { ScannedModule } from '../module/scanner'
 import type { DIContainer } from '../di/container'
-import { Logger } from '../logger/logger'
 
 export class LifecycleManager {
   private logger = new Logger('Lifecycle')

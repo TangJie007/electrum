@@ -1,9 +1,7 @@
 import { app } from 'electron'
-import { META, readMetadata } from '../constants/metadata-keys'
+import { META, readMetadata, Logger, type AppEventEntry } from '@electrum/common'
 import type { DIContainer } from '../di/container'
 import type { ScannedModule } from '../module/scanner'
-import { Logger } from '../logger/logger'
-import type { AppEventEntry } from '../decorators/app-event.decorator'
 
 export class EventBridge {
   private logger = new Logger('EventBridge')

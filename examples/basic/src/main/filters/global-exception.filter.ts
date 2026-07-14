@@ -1,5 +1,5 @@
-import { Injectable, ElectronException } from 'electron-mvc'
-import type { ExceptionFilter, IpcContext, IpcErrorResponse } from 'electron-mvc'
+import { Injectable, ElectronException } from '@electrum/common'
+import type { ExceptionFilter, IpcContext, IpcErrorResponse } from '@electrum/common'
 
 @Injectable()
 export class GlobalExceptionFilter implements ExceptionFilter {

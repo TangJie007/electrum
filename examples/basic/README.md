@@ -1,16 +1,8 @@
-# Electron MVC Example
+# @electrum/example-basic
 
-Demonstrates `electron-mvc` with:
+Demonstrates `@electrum/common` + `@electrum/core` with:
 
-- `@Module` composition (`AppModule` → `WindowModule` + `FileModule`)
-- Field DI (`@Inject`, `@WindowRef`)
-- IPC (`@IpcHandle` / `@IpcOn`) and `@AppEvent`
-- Global interceptor + exception filter
-- Declarative main window
-
-```bash
-# from repo root
-pnpm install
-pnpm build
-pnpm dev:example
-```
+- Module / Controller / IPC handlers
+- Field injection and lifecycle hooks
+- Declarative windows
+- Global filters / interceptors

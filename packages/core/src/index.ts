@@ -1,41 +1,6 @@
-import './polyfill'
+import '@electrum/common'
 
-export { METADATA_READY } from './polyfill'
-export { META, readMetadata, getClassMetadata } from './constants/metadata-keys'
-
-export { Module } from './decorators/module.decorator'
-export type {
-  ModuleMetadata,
-  Provider,
-  ValueProvider,
-  ClassProvider,
-  FactoryProvider,
-} from './decorators/module.decorator'
-
-export { Injectable } from './decorators/injectable.decorator'
-export type { InjectableOptions, Scope } from './decorators/injectable.decorator'
-
-export { Controller } from './decorators/controller.decorator'
-export { IpcHandle, IpcOn } from './decorators/ipc.decorator'
-export type { IpcHandlerEntry } from './decorators/ipc.decorator'
-
-export { AppEvent } from './decorators/app-event.decorator'
-export type { AppEventEntry } from './decorators/app-event.decorator'
-
-export { Inject, Optional } from './decorators/inject.decorator'
-export type { InjectionPoint } from './decorators/inject.decorator'
-
-export { WindowRef } from './decorators/window-ref.decorator'
-export { WindowDeclaration } from './decorators/window.decorator'
-export type { WindowOptions } from './decorators/window.decorator'
-
-export {
-  UseGuards,
-  UsePipes,
-  UseInterceptors,
-  UseFilters,
-} from './decorators/middleware.decorator'
-export type { MethodMiddlewareEntry } from './decorators/middleware.decorator'
+export { Application, createApp } from './application'
 
 export { DIContainer } from './di/container'
 export { ModuleScanner } from './module/scanner'
@@ -46,28 +11,59 @@ export { EventBridge } from './bridge/event-bridge'
 export { MiddlewarePipeline } from './middleware/pipeline'
 export type { PipelineExecutionContext } from './middleware/pipeline'
 
-export type { OnModuleInit, OnAppReady, OnModuleDestroy } from './lifecycle/interfaces'
 export { LifecycleManager } from './lifecycle/manager'
-
 export { WindowManager } from './window/manager'
+export { TypeGenerator } from './type-generator/generator'
+export type { Plugin } from './plugin/plugin.interface'
 
-export type { CanActivate, IpcContext } from './guards/guard.interface'
-export type { NestInterceptor } from './interceptors/interceptor.interface'
-export type { PipeTransform } from './pipes/pipe.interface'
-export type { ExceptionFilter } from './filters/filter.interface'
-
+// Re-export common APIs for convenience (Nest-like: prefer @electrum/common for app code)
 export {
+  METADATA_READY,
+  META,
+  readMetadata,
+  getClassMetadata,
+  Module,
+  Injectable,
+  Controller,
+  IpcHandle,
+  IpcOn,
+  AppEvent,
+  Inject,
+  Optional,
+  WindowRef,
+  WindowDeclaration,
+  UseGuards,
+  UsePipes,
+  UseInterceptors,
+  UseFilters,
   ElectronException,
   NotFoundException,
   ForbiddenException,
   ValidationException,
-} from './error/base.exception'
-export type { IpcErrorResponse } from './error/error-response'
+  Logger,
+} from '@electrum/common'
 
-export { Logger } from './logger/logger'
-export type { LogLevel } from './logger/logger'
-
-export { TypeGenerator } from './type-generator/generator'
-export type { Plugin } from './plugin/plugin.interface'
-
-export { Application, createApp } from './application'
+export type {
+  ModuleMetadata,
+  Provider,
+  ValueProvider,
+  ClassProvider,
+  FactoryProvider,
+  InjectableOptions,
+  Scope,
+  IpcHandlerEntry,
+  AppEventEntry,
+  InjectionPoint,
+  WindowOptions,
+  MethodMiddlewareEntry,
+  OnModuleInit,
+  OnAppReady,
+  OnModuleDestroy,
+  CanActivate,
+  IpcContext,
+  NestInterceptor,
+  PipeTransform,
+  ExceptionFilter,
+  IpcErrorResponse,
+  LogLevel,
+} from '@electrum/common'

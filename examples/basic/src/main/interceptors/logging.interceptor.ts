@@ -1,5 +1,5 @@
-import { Injectable } from 'electron-mvc'
-import type { NestInterceptor, IpcContext } from 'electron-mvc'
+import { Injectable } from '@electrum/common'
+import type { NestInterceptor, IpcContext } from '@electrum/common'
 
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {

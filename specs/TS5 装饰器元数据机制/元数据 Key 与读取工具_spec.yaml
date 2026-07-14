@@ -1,0 +1,27 @@
+# Spec 文件: 元数据 Key 与读取工具
+# 模块: TS5 装饰器元数据机制
+# 生成时间: 2026-07-14
+# 版本: 1.0.0
+
+spec:
+  id: "TS5 装饰器元数据机制-元数据 Key 与读取工具"
+  name: "元数据 Key 与读取工具"
+  module: "TS5 装饰器元数据机制"
+  description: "通过 Symbol.for 定义 META 键（MODULE/INJECTABLE/CONTROLLER/IPC/注入点/中间件等），并提供 getClassMetadata、readMetadata"
+  status: "draft"
+  priority: "high"
+  tags: []
+  acceptance:
+  - "META 常量覆盖文档列出的类/方法/属性/中间件 key"
+  - "读写均经由 Class[Symbol.metadata]，不依赖 reflect-metadata"
+  - "HMR 重载后 Symbol.for key 仍一致可读取"
+  dependencies: []
+  notes: ""
+  changelog:
+    - date: "2026-07-14"
+      author: "AI"
+      summary: "初始版本，由 PRD 解析生成"
+      changes:
+        - "全量生成"
+  version: "1.0.0"
+  updated_at: "2026-07-14"

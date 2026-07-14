@@ -1,4 +1,4 @@
-import { Injectable, Inject, OnModuleInit } from 'electron-mvc'
+import { Injectable, Inject, OnModuleInit } from '@electrum/common'
 
 export interface AppConfig {
   appName: string

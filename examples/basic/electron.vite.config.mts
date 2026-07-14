@@ -1,16 +1,24 @@
-import { resolve } from 'node:path'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const commonSrc = resolve(__dirname, '../../packages/common/src')
 const coreSrc = resolve(__dirname, '../../packages/core/src')
 
 export default defineConfig({
   main: {
     resolve: {
       alias: {
-        'electron-mvc': resolve(coreSrc, 'index.ts'),
+        '@electrum/common': resolve(commonSrc, 'index.ts'),
+        '@electrum/core': resolve(coreSrc, 'index.ts'),
       },
     },
-    plugins: [externalizeDepsPlugin({ exclude: ['electron-mvc'] })],
+    plugins: [
+      externalizeDepsPlugin({
+        exclude: ['@electrum/common', '@electrum/core'],
+      }),
+    ],
     build: {
       rollupOptions: {
         input: {

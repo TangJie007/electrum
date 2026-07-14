@@ -1,9 +1,10 @@
 # Electron MVC 框架设计方案
 
-> **文档版本**：v2.0.0  
-> **日期**：2026-07-14  
+> **文档版本**：v2.1.0  
+> **日期**：2026-07-15  
 > **状态**：设计阶段  
-> **重大变更**：全面采用 TypeScript 5 原生 Stage 3 装饰器，移除 `experimentalDecorators` 和 `reflect-metadata` 依赖
+> **重大变更**：全面采用 TypeScript 5 原生 Stage 3 装饰器，移除 `experimentalDecorators` 和 `reflect-metadata` 依赖  
+> **包体系**：对齐 NestJS 分包模型，统一使用 `@electrum/*` 作用域包名（`@electrum/common`、`@electrum/core`、`@electrum/testing` 等）
 
 ---
 
@@ -26,6 +27,9 @@
 - [5. 高级特性](#5-高级特性)
 - [6. API 设计参考](#6-api-设计参考)
 - [7. 项目结构](#7-项目结构)
+  - [7.1 包划分原则（对齐 NestJS）](#71-包划分原则对齐-nestjs)
+  - [7.2 Monorepo 目录结构](#72-monorepo-目录结构)
+  - [7.3 包依赖关系](#73-包依赖关系)
 - [8. 构建与发布](#8-构建与发布)
 - [9. 测试策略](#9-测试策略)
 - [10. 路线图](#10-路线图)
@@ -56,7 +60,8 @@ NestJS 在 Node.js 服务端领域已证明了 **装饰器 + DI + 模块化 + MV
 
 | 目标 | 说明 |
 |---|---|
-| **轻量** | 核心包 < 50KB（minified），**零运行时依赖** |
+| **轻量** | `@electrum/core` < 50KB（minified），公共 API 在 `@electrum/common`，**零运行时依赖** |
+| **分包清晰** | 对齐 NestJS：`common`（装饰器/接口）与 `core`（运行时引擎）分离，包名统一 `@electrum/*` |
 | **类型安全** | 主进程 ↔ 渲染进程通信全链路类型安全，自动生成 `.d.ts` |
 | **低侵入** | 不封装 Electron API，不改变 Electron 原有心智模型，装饰器是可选的增强层 |
 | **可测试** | Service 层可完全脱离 Electron 运行时进行单元测试 |
@@ -229,7 +234,7 @@ const metadata = Foo[Symbol.metadata]
 `Symbol.metadata` 是 TC39 Stage 3 提案，部分 Node.js 版本尚未原生支持。框架入口需要确保它存在：
 
 ```typescript
-// src/core/polyfill.ts — 必须在所有装饰器求值之前执行
+// packages/common/src/polyfill.ts — 必须在所有装饰器求值之前执行（由 @electrum/common 入口 re-export）
 ;(Symbol as { metadata?: symbol }).metadata ??= Symbol.for('Symbol.metadata')
 
 // 导出，确保被引用
@@ -241,34 +246,34 @@ export const METADATA_READY = true
 使用 `Symbol.for()` 创建全局唯一的 key，确保 HMR 重新加载模块时元数据 key 一致：
 
 ```typescript
-// src/core/constants/metadata-keys.ts
+// packages/common/src/constants/metadata-keys.ts
 
 export const META = {
   // 类级别
-  MODULE: Symbol.for('emvc:module'),
-  INJECTABLE: Symbol.for('emvc:injectable'),
-  CONTROLLER: Symbol.for('emvc:controller'),
-  WINDOW_DECLARATION: Symbol.for('emvc:window_declaration'),
+  MODULE: Symbol.for('electrum:module'),
+  INJECTABLE: Symbol.for('electrum:injectable'),
+  CONTROLLER: Symbol.for('electrum:controller'),
+  WINDOW_DECLARATION: Symbol.for('electrum:window_declaration'),
 
   // 方法级别（存储在类元数据中）
-  IPC_HANDLE: Symbol.for('emvc:ipc_handle'),
-  IPC_ON: Symbol.for('emvc:ipc_on'),
-  APP_EVENT: Symbol.for('emvc:app_event'),
+  IPC_HANDLE: Symbol.for('electrum:ipc_handle'),
+  IPC_ON: Symbol.for('electrum:ipc_on'),
+  APP_EVENT: Symbol.for('electrum:app_event'),
 
   // 属性级别 — DI 注入点
-  INJECTIONS: Symbol.for('emvc:injections'),
+  INJECTIONS: Symbol.for('electrum:injections'),
 
   // 中间件 — 类级别
-  CLASS_GUARDS: Symbol.for('emvc:class_guards'),
-  CLASS_PIPES: Symbol.for('emvc:class_pipes'),
-  CLASS_INTERCEPTORS: Symbol.for('emvc:class_interceptors'),
-  CLASS_FILTERS: Symbol.for('emvc:class_filters'),
+  CLASS_GUARDS: Symbol.for('electrum:class_guards'),
+  CLASS_PIPES: Symbol.for('electrum:class_pipes'),
+  CLASS_INTERCEPTORS: Symbol.for('electrum:class_interceptors'),
+  CLASS_FILTERS: Symbol.for('electrum:class_filters'),
 
   // 中间件 — 方法级别
-  METHOD_GUARDS: Symbol.for('emvc:method_guards'),
-  METHOD_PIPES: Symbol.for('emvc:method_pipes'),
-  METHOD_INTERCEPTORS: Symbol.for('emvc:method_interceptors'),
-  METHOD_FILTERS: Symbol.for('emvc:method_filters'),
+  METHOD_GUARDS: Symbol.for('electrum:method_guards'),
+  METHOD_PIPES: Symbol.for('electrum:method_pipes'),
+  METHOD_INTERCEPTORS: Symbol.for('electrum:method_interceptors'),
+  METHOD_FILTERS: Symbol.for('electrum:method_filters'),
 } as const
 
 // ====== 元数据读取工具函数 ======
@@ -652,7 +657,7 @@ export function WindowRef(name = 'main') {
     const injections = (context.metadata[META.INJECTIONS] as InjectionPoint[]) || []
     injections.push({
       propertyKey: context.name,
-      token: Symbol.for(`emvc:window:${name}`),
+      token: Symbol.for(`electrum:window:${name}`),
       type: 'window',
       windowName: name,
     })
@@ -782,8 +787,8 @@ export class DIContainer {
     // 1. 窗口 token 特殊处理
     if (typeof token === 'symbol') {
       const tokenStr = token.description || ''
-      if (tokenStr.startsWith('emvc:window:')) {
-        const windowName = tokenStr.replace('emvc:window:', '')
+      if (tokenStr.startsWith('electrum:window:')) {
+        const windowName = tokenStr.replace('electrum:window:', '')
         const win = this.windowProvider(windowName)
         if (!win) throw new Error(`Window "${windowName}" not found`)
         return win as T
@@ -873,7 +878,7 @@ export class DIContainer {
   has(token: Token): boolean {
     if (typeof token === 'symbol') {
       const desc = token.description || ''
-      if (desc.startsWith('emvc:window:')) return true
+      if (desc.startsWith('electrum:window:')) return true
     }
     return this.providers.has(token) || this.singletons.has(token)
   }
@@ -1906,8 +1911,7 @@ export class HotReload {
 
 ```typescript
 // ==================== main.ts ====================
-import './polyfill' // 确保 Symbol.metadata 存在
-import { createApp } from 'electron-mvc'
+import { createApp } from '@electrum/core'
 import { AppModule } from './app.module'
 import { GlobalExceptionFilter } from './filters/global-exception.filter'
 import { LoggingInterceptor } from './interceptors/logging.interceptor'
@@ -1928,7 +1932,7 @@ async function main() {
 main()
 
 // ==================== app.module.ts ====================
-import { Module } from 'electron-mvc'
+import { Module } from '@electrum/common'
 import { WindowModule } from './window/window.module'
 import { FileModule } from './file/file.module'
 import { UserModule } from './user/user.module'
@@ -1961,7 +1965,7 @@ export class AppModule {}
 export class FileModule {}
 
 // ==================== file.controller.ts ====================
-import { Controller, IpcHandle, IpcOn, AppEvent, Inject, WindowRef, UseInterceptors } from 'electron-mvc'
+import { Controller, IpcHandle, IpcOn, AppEvent, Inject, WindowRef, UseInterceptors } from '@electrum/common'
 import { BrowserWindow, IpcMainEvent } from 'electron'
 import { FileService } from './file.service'
 import { LoggingInterceptor } from '../interceptors/logging.interceptor'
@@ -2002,7 +2006,7 @@ export class FileController {
 }
 
 // ==================== file.service.ts ====================
-import { Injectable, Inject, OnModuleInit, OnModuleDestroy } from 'electron-mvc'
+import { Injectable, Inject, OnModuleInit, OnModuleDestroy } from '@electrum/common'
 import * as fs from 'fs'
 
 @Injectable()
@@ -2042,7 +2046,7 @@ export class FileService implements OnModuleInit, OnModuleDestroy {
 }
 
 // ==================== window/window.module.ts ====================
-import { Module, WindowDeclaration } from 'electron-mvc'
+import { Module, WindowDeclaration } from '@electrum/common'
 import * as path from 'path'
 
 @WindowDeclaration({
@@ -2111,6 +2115,8 @@ async function readFile() {
 ### 6.2 API 总览
 
 ```typescript
+// ─── 来自 @electrum/common ───
+
 // === 类装饰器（TS5 Stage 3）===
 @Module(metadata)              // 声明模块
 @Injectable(options?)          // 声明可注入服务
@@ -2138,6 +2144,8 @@ OnModuleInit                   // onModuleInit()
 OnAppReady                     // onAppReady()
 OnModuleDestroy                // onModuleDestroy()
 
+// ─── 来自 @electrum/core ───
+
 // === 应用 API ===
 createApp(rootModule)          // 创建应用实例
 app.start()                    // 启动应用
@@ -2156,15 +2164,48 @@ app.getWindowManager()         // 获取窗口管理器
 
 ## 7. 项目结构
 
+### 7.1 包划分原则（对齐 NestJS）
+
+包名统一使用 **`@electrum`** 作用域前缀，分包职责对齐 NestJS：
+
+| 包名 | 对齐 NestJS | 职责 | 典型导出 |
+|---|---|---|---|
+| **`@electrum/common`** | `@nestjs/common` | 用户日常 import：装饰器、接口、异常、工具、元数据 Key | `@Module` `@Injectable` `@Controller` `@IpcHandle` `@Inject`、`CanActivate`、`ExceptionFilter`、业务异常基类 |
+| **`@electrum/core`** | `@nestjs/core` | 运行时引擎：应用启动、DI、模块扫描、IPC/事件桥接、生命周期、窗口、中间件管道 | `createApp`、`Application`、`DIContainer`、`ModuleScanner`、`IpcBridge` |
+| **`@electrum/testing`** | `@nestjs/testing` | 测试工具：测试容器、Electron mock | `createTestContainer`、`mockElectron` |
+
+**用户导入约定**（与 NestJS 心智模型一致）：
+
+```typescript
+// 装饰器 / 接口 / 异常 → common
+import { Module, Injectable, Controller, IpcHandle, Inject } from '@electrum/common'
+
+// 启动 / 运行时 API → core
+import { createApp } from '@electrum/core'
+
+// 测试 → testing
+import { createTestContainer } from '@electrum/testing'
 ```
-electron-mvc/
+
+**后续可扩展包**（不进入 MVP，仅作命名预留）：
+
+| 包名 | 用途 |
+|---|---|
+| `@electrum/cli` | 脚手架 / 代码生成 |
+| `@electrum/plugin-updater` | 自动更新插件 |
+| `@electrum/plugin-tray` | 系统托盘插件 |
+| `@electrum/plugin-hotkey` | 全局快捷键插件 |
+
+### 7.2 Monorepo 目录结构
+
+```
+electrum/
 ├── packages/
-│   ├── core/                          # 核心框架
+│   ├── common/                            # @electrum/common
 │   │   ├── src/
-│   │   │   ├── polyfill.ts             # Symbol.metadata polyfill
-│   │   │   ├── application.ts           # Application 启动入口
+│   │   │   ├── polyfill.ts                 # Symbol.metadata polyfill
 │   │   │   ├── constants/
-│   │   │   │   └── metadata-keys.ts     # 元数据 Key + 读取工具
+│   │   │   │   └── metadata-keys.ts         # 元数据 Key + 读取工具
 │   │   │   ├── decorators/
 │   │   │   │   ├── module.decorator.ts
 │   │   │   │   ├── injectable.decorator.ts
@@ -2175,8 +2216,26 @@ electron-mvc/
 │   │   │   │   ├── window-ref.decorator.ts   # @WindowRef (field)
 │   │   │   │   ├── window.decorator.ts       # @WindowDeclaration (class)
 │   │   │   │   └── middleware.decorator.ts
+│   │   │   ├── interfaces/
+│   │   │   │   ├── lifecycle.interface.ts    # OnModuleInit / OnModuleDestroy / OnAppReady
+│   │   │   │   ├── guard.interface.ts
+│   │   │   │   ├── interceptor.interface.ts
+│   │   │   │   ├── pipe.interface.ts
+│   │   │   │   ├── filter.interface.ts
+│   │   │   │   └── plugin.interface.ts
+│   │   │   ├── exceptions/
+│   │   │   │   ├── base.exception.ts
+│   │   │   │   └── error-response.ts
+│   │   │   ├── utils/
+│   │   │   └── index.ts
+│   │   ├── package.json                    # name: "@electrum/common"
+│   │   └── tsconfig.json
+│   │
+│   ├── core/                              # @electrum/core
+│   │   ├── src/
+│   │   │   ├── application.ts               # Application 启动入口
 │   │   │   ├── di/
-│   │   │   │   └── container.ts         # DI 容器（属性注入）
+│   │   │   │   └── container.ts             # DI 容器（属性注入）
 │   │   │   ├── module/
 │   │   │   │   └── scanner.ts
 │   │   │   ├── bridge/
@@ -2185,46 +2244,64 @@ electron-mvc/
 │   │   │   ├── middleware/
 │   │   │   │   └── pipeline.ts
 │   │   │   ├── lifecycle/
-│   │   │   │   ├── interfaces.ts
 │   │   │   │   └── manager.ts
 │   │   │   ├── window/
 │   │   │   │   └── manager.ts
-│   │   │   ├── guards/
-│   │   │   │   └── guard.interface.ts
-│   │   │   ├── interceptors/
-│   │   │   │   └── interceptor.interface.ts
-│   │   │   ├── pipes/
-│   │   │   │   └── pipe.interface.ts
-│   │   │   ├── filters/
-│   │   │   │   └── filter.interface.ts
-│   │   │   ├── error/
-│   │   │   │   ├── base.exception.ts
-│   │   │   │   └── error-response.ts
 │   │   │   ├── logger/
 │   │   │   │   └── logger.ts
 │   │   │   ├── type-generator/
 │   │   │   │   └── generator.ts
-│   │   │   ├── plugin/
-│   │   │   │   └── plugin.interface.ts
 │   │   │   ├── hmr/
 │   │   │   │   └── hot-reload.ts
 │   │   │   └── index.ts
-│   │   ├── package.json
+│   │   ├── package.json                    # name: "@electrum/core"
 │   │   └── tsconfig.json
 │   │
-│   ├── common/                        # 公共类型和工具
-│   │   └── src/
-│   │       ├── interfaces/
-│   │       └── utils/
-│   │
-│   └── testing/                       # 测试工具
-│       └── src/
-│           ├── test-container.ts
-│           └── mock-electron.ts
+│   └── testing/                           # @electrum/testing
+│       ├── src/
+│       │   ├── test-container.ts
+│       │   ├── mock-electron.ts
+│       │   └── index.ts
+│       ├── package.json                    # name: "@electrum/testing"
+│       └── tsconfig.json
 │
 ├── examples/
-└── docs/
+│   └── basic/                             # @electrum/example-basic
+├── docs/
+├── package.json                           # 根 workspace（private: electrum）
+├── pnpm-workspace.yaml
+└── turbo.json
 ```
+
+### 7.3 包依赖关系
+
+```
+                    ┌─────────────────────┐
+                    │  @electrum/common   │  零运行时依赖
+                    │  装饰器 / 接口 / 异常 │  peer: typescript
+                    └──────────┬──────────┘
+                               │ depends on
+                    ┌──────────▼──────────┐
+                    │   @electrum/core    │  peer: electron, typescript
+                    │   运行时引擎          │  dep: @electrum/common
+                    └──────────┬──────────┘
+                               │ depends on
+                    ┌──────────▼──────────┐
+                    │  @electrum/testing  │  dep: @electrum/core (+ common)
+                    │  测试工具            │
+                    └─────────────────────┘
+```
+
+| 包 | dependencies | peerDependencies |
+|---|---|---|
+| `@electrum/common` | （空） | `typescript >= 5.2` |
+| `@electrum/core` | `@electrum/common` | `electron >= 20`、`typescript >= 5.2` |
+| `@electrum/testing` | `@electrum/core`、`@electrum/common` | `vitest`（可选）|
+
+规则：
+1. **禁止反向依赖**：`common` 不得依赖 `core` / `testing`
+2. **用户业务代码**优先从 `@electrum/common` 取装饰器；仅启动与高级运行时 API 使用 `@electrum/core`
+3. **Electron 类型**仅允许出现在 `core`（及 `common` 中必要的类型-only 引用，如 `BrowserWindow`）
 
 ---
 
@@ -2283,31 +2360,74 @@ export default defineConfig({
   splitting: false,
   sourcemap: true,
   clean: true,
-  external: ['electron'],  // ★ 不再有 reflect-metadata
+  // core 包需 external electron + @electrum/common；common 包无 runtime external
+  external: ['electron', '@electrum/common'],
 })
 ```
 
-### 8.4 package.json
+### 8.4 package.json（各包示意）
+
+**根 workspace**
 
 ```json
 {
-  "name": "electron-mvc",
+  "name": "electrum",
   "version": "0.1.0",
-  "description": "NestJS-inspired MVC framework for Electron, powered by TS5 native decorators",
+  "private": true,
+  "description": "NestJS-inspired MVC framework for Electron (@electrum/*)",
+  "scripts": {
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "dev:example": "pnpm --filter @electrum/example-basic dev"
+  },
+  "engines": { "node": ">=18" },
+  "license": "MIT"
+}
+```
+
+**`@electrum/common`**
+
+```json
+{
+  "name": "@electrum/common",
+  "version": "0.1.0",
+  "description": "Decorators, interfaces, and shared utilities for Electrum",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": ["dist"],
   "scripts": {
     "build": "tsup",
-    "test": "vitest",
-    "lint": "eslint src --ext .ts",
-    "prepublishOnly": "pnpm run build"
+    "test": "vitest"
+  },
+  "peerDependencies": {
+    "typescript": ">=5.2.0"
+  },
+  "dependencies": {},
+  "license": "MIT"
+}
+```
+
+**`@electrum/core`**
+
+```json
+{
+  "name": "@electrum/core",
+  "version": "0.1.0",
+  "description": "Electrum runtime — DI, module scanner, IPC bridge, application bootstrap",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest"
   },
   "peerDependencies": {
     "electron": ">=20.0.0",
     "typescript": ">=5.2.0"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@electrum/common": "workspace:*"
+  },
   "devDependencies": {
     "electron": "^32.0.0",
     "typescript": "^5.5.0",
@@ -2330,7 +2450,29 @@ export default defineConfig({
 }
 ```
 
-> **注意**：`dependencies` 为空对象 — **零运行时依赖**。不再需要 `reflect-metadata`。
+**`@electrum/testing`**
+
+```json
+{
+  "name": "@electrum/testing",
+  "version": "0.1.0",
+  "description": "Testing utilities for Electrum applications",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@electrum/common": "workspace:*",
+    "@electrum/core": "workspace:*"
+  },
+  "license": "MIT"
+}
+```
+
+> **注意**：`@electrum/common` 与运行时之外的依赖均为空 — **零第三方运行时依赖**。不再需要 `reflect-metadata`。`tsup` 的 `external` 需包含 `electron`、`@electrum/common`（core 包内）。
 
 ---
 
@@ -2349,7 +2491,7 @@ export default defineConfig({
 ```typescript
 // packages/testing/src/test-container.ts
 
-import { DIContainer } from 'electron-mvc/core'
+import { DIContainer } from '@electrum/core'
 
 export class TestContainer {
   private container = new DIContainer()
@@ -2379,9 +2521,8 @@ export function createTestContainer(): TestContainer {
 ```typescript
 // file.service.spec.ts
 import { describe, it, expect } from 'vitest'
-import { createTestContainer } from 'electron-mvc/testing'
+import { createTestContainer } from '@electrum/testing'
 import { FileService } from './file.service'
-import './polyfill' // 确保 Symbol.metadata
 
 describe('FileService', () => {
   it('should read file content', async () => {
@@ -2412,9 +2553,8 @@ describe('FileService', () => {
 ```typescript
 // metadata.spec.ts — 验证 TS5 装饰器元数据写入正确
 import { describe, it, expect } from 'vitest'
-import { Module, Controller, IpcHandle, Inject, Injectable } from 'electron-mvc'
-import { META, readMetadata } from 'electron-mvc/core'
-import './polyfill'
+import { Module, Controller, IpcHandle, Inject, Injectable } from '@electrum/common'
+import { META, readMetadata } from '@electrum/common'
 
 @Injectable()
 class TestService {}
@@ -2451,8 +2591,9 @@ describe('TS5 Decorator Metadata', () => {
 
 ## 10. 路线图
 
-### v0.1.0 — MVP（TS5 原生装饰器）
+### v0.1.0 — MVP（TS5 原生装饰器 + `@electrum/*` 分包）
 
+- [x] 包体系：`@electrum/common` / `@electrum/core`（对齐 NestJS）
 - [x] `Symbol.metadata` polyfill
 - [x] 装饰器系统（`@Module` `@Injectable` `@Controller` `@IpcHandle` `@IpcOn`）
 - [x] 属性注入 DI 容器（`@Inject` `@WindowRef` field decorator）
@@ -2485,12 +2626,12 @@ describe('TS5 Decorator Metadata', () => {
 
 - [ ] HMR 热重载
 - [ ] electron-vite 集成预设
-- [ ] 测试工具包
-- [ ] CLI 脚手架
+- [ ] `@electrum/testing` 测试工具包
+- [ ] `@electrum/cli` 脚手架
 
 ### v0.6.0 — 插件生态
 
-- [ ] 插件系统
+- [ ] 插件系统（`@electrum/plugin-*`）
 - [ ] 自动更新 / 托盘 / 快捷键插件
 
 ### v1.0.0 — 稳定版

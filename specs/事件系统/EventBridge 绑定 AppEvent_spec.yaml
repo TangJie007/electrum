@@ -1,0 +1,27 @@
+# Spec 文件: EventBridge 绑定 AppEvent
+# 模块: 事件系统
+# 生成时间: 2026-07-14
+# 版本: 1.0.0
+
+spec:
+  id: "事件系统-EventBridge 绑定 AppEvent"
+  name: "EventBridge 绑定 AppEvent"
+  module: "事件系统"
+  description: "扫描 controllers+providers 的 @AppEvent 元数据，绑定到 electron app.on，异步错误捕获记日志"
+  status: "draft"
+  priority: "medium"
+  tags: []
+  acceptance:
+  - "@AppEvent('window-all-closed') 等方法在 app 事件触发时执行"
+  - "Promise rejection 与同步 throw 均记 Logger.error"
+  - "参数按 app.on 回调原样传递"
+  dependencies: []
+  notes: ""
+  changelog:
+    - date: "2026-07-14"
+      author: "AI"
+      summary: "初始版本，由 PRD 解析生成"
+      changes:
+        - "全量生成"
+  version: "1.0.0"
+  updated_at: "2026-07-14"

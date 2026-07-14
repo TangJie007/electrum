@@ -5,7 +5,7 @@ import {
   Inject,
   WindowRef,
   UseInterceptors,
-} from 'electron-mvc'
+} from '@electrum/common'
 import type { BrowserWindow, IpcMainEvent } from 'electron'
 import { FileService } from './file.service'
 import { LoggingInterceptor } from '../interceptors/logging.interceptor'

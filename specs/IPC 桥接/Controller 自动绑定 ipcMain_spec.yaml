@@ -1,0 +1,28 @@
+# Spec 文件: Controller 自动绑定 ipcMain
+# 模块: IPC 桥接
+# 生成时间: 2026-07-14
+# 版本: 1.0.0
+
+spec:
+  id: "IPC 桥接-Controller 自动绑定 ipcMain"
+  name: "Controller 自动绑定 ipcMain"
+  module: "IPC 桥接"
+  description: "IpcBridge 解析 Controller 实例，按 prefix 拼通道，绑定 @IpcHandle→handle、@IpcOn→on，并支持注销"
+  status: "draft"
+  priority: "high"
+  tags: []
+  acceptance:
+  - "@Controller('file')+@IpcHandle('read') 绑定 file:read"
+  - "devOnly 通道在非开发环境跳过"
+  - "重复通道 warn 并 skip"
+  - "unregisterAll 移除全部 handler/listener"
+  dependencies: []
+  notes: ""
+  changelog:
+    - date: "2026-07-14"
+      author: "AI"
+      summary: "初始版本，由 PRD 解析生成"
+      changes:
+        - "全量生成"
+  version: "1.0.0"
+  updated_at: "2026-07-14"

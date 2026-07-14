@@ -1,0 +1,27 @@
+# Spec 文件: Application 运行时 API
+# 模块: 应用启动与 API
+# 生成时间: 2026-07-14
+# 版本: 1.0.0
+
+spec:
+  id: "应用启动与 API-Application 运行时 API"
+  name: "Application 运行时 API"
+  module: "应用启动与 API"
+  description: "提供 use/useGlobal*/generateTypes/reload/resolve/getWindowManager 等公共方法"
+  status: "draft"
+  priority: "high"
+  tags: []
+  acceptance:
+  - "app.resolve(token) 返回 DI 实例"
+  - "app.getWindowManager() 返回窗口管理器"
+  - "全局中间件与插件挂载 API 存在且可链式调用"
+  dependencies: []
+  notes: ""
+  changelog:
+    - date: "2026-07-14"
+      author: "AI"
+      summary: "初始版本，由 PRD 解析生成"
+      changes:
+        - "全量生成"
+  version: "1.0.0"
+  updated_at: "2026-07-14"

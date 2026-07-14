@@ -1,4 +1,4 @@
-import { createApp } from 'electron-mvc'
+import { createApp } from '@electrum/core'
 import { AppModule } from './app.module'
 import { LoggingInterceptor } from './interceptors/logging.interceptor'
 import { GlobalExceptionFilter } from './filters/global-exception.filter'

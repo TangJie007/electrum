@@ -1,0 +1,26 @@
+# Spec 文件: ts-morph 精确类型与 Preload 生成
+# 模块: 类型生成
+# 生成时间: 2026-07-14
+# 版本: 1.0.0
+
+spec:
+  id: "类型生成-ts-morph 精确类型与 Preload 生成"
+  name: "ts-morph 精确类型与 Preload 生成"
+  module: "类型生成"
+  description: "从源码 AST 提取参数/返回类型；并生成 preload 脚本（路线图 v0.4）"
+  status: "draft"
+  priority: "medium"
+  tags: []
+  acceptance:
+  - "生成签名不再仅为 ...args:any[] / any"
+  - "能产出可用的 preload 暴露脚本或明确生成产物路径"
+  dependencies: []
+  notes: ""
+  changelog:
+    - date: "2026-07-14"
+      author: "AI"
+      summary: "初始版本，由 PRD 解析生成"
+      changes:
+        - "全量生成"
+  version: "1.0.0"
+  updated_at: "2026-07-14"

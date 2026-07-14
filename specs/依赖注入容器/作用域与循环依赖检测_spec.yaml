@@ -1,0 +1,27 @@
+# Spec 文件: 作用域与循环依赖检测
+# 模块: 依赖注入容器
+# 生成时间: 2026-07-14
+# 版本: 1.0.0
+
+spec:
+  id: "依赖注入容器-作用域与循环依赖检测"
+  name: "作用域与循环依赖检测"
+  module: "依赖注入容器"
+  description: "支持 singleton/transient；resolving Set 检测环并抛出含完整解析链的错误"
+  status: "draft"
+  priority: "high"
+  tags: []
+  acceptance:
+  - "singleton 首次 resolve 后缓存，后续同实例"
+  - "transient 每次 resolve 新实例"
+  - "A→B→A 抛出 Circular dependency 且信息含解析链"
+  dependencies: []
+  notes: ""
+  changelog:
+    - date: "2026-07-14"
+      author: "AI"
+      summary: "初始版本，由 PRD 解析生成"
+      changes:
+        - "全量生成"
+  version: "1.0.0"
+  updated_at: "2026-07-14"

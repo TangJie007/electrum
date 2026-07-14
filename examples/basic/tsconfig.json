@@ -4,12 +4,12 @@
     "types": ["node"],
     "baseUrl": ".",
     "paths": {
-      "electron-mvc": ["../../packages/core/src"]
+      "@electrum/common": ["../../packages/common/src"],
+      "@electrum/core": ["../../packages/core/src"]
     }
   },
   "include": [
     "src/main/**/*",
-    "src/preload/**/*",
-    "electron.vite.config.ts"
+    "src/preload/**/*"
   ]
 }

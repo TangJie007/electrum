@@ -1,0 +1,27 @@
+# Spec 文件: TS5 原生装饰器工程配置
+# 模块: 包体系与工程化
+# 生成时间: 2026-07-14
+# 版本: 1.0.0
+
+spec:
+  id: "包体系与工程化-TS5 原生装饰器工程配置"
+  name: "TS5 原生装饰器工程配置"
+  module: "包体系与工程化"
+  description: "仓库与示例 tsconfig 启用 Stage 3 装饰器，禁用 experimentalDecorators/emitDecoratorMetadata"
+  status: "draft"
+  priority: "high"
+  tags: []
+  acceptance:
+  - "未启用 experimentalDecorators 与 emitDecoratorMetadata"
+  - "lib 包含 ESNext.Decorators，useDefineForClassFields 为 true"
+  - "示例/包可在 TypeScript>=5.2 下正常编译装饰器代码"
+  dependencies: []
+  notes: ""
+  changelog:
+    - date: "2026-07-14"
+      author: "AI"
+      summary: "初始版本，由 PRD 解析生成"
+      changes:
+        - "全量生成"
+  version: "1.0.0"
+  updated_at: "2026-07-14"

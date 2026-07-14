@@ -1,0 +1,27 @@
+# Spec 文件: 属性注入解析
+# 模块: 依赖注入容器
+# 生成时间: 2026-07-14
+# 版本: 1.0.0
+
+spec:
+  id: "依赖注入容器-属性注入解析"
+  name: "属性注入解析"
+  module: "依赖注入容器"
+  description: "DIContainer 无参 new 后读取 INJECTIONS，按 service/window/optional 递归 resolve 并赋值"
+  status: "draft"
+  priority: "high"
+  tags: []
+  acceptance:
+  - "支持 useValue/useClass/useFactory(+inject) 注册"
+  - "window token 经 setWindowProvider 解析，缺失则抛错"
+  - "optional 注入缺失时不抛错且字段保持 undefined"
+  dependencies: []
+  notes: ""
+  changelog:
+    - date: "2026-07-14"
+      author: "AI"
+      summary: "初始版本，由 PRD 解析生成"
+      changes:
+        - "全量生成"
+  version: "1.0.0"
+  updated_at: "2026-07-14"

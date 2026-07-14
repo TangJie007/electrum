@@ -1,6 +1,6 @@
 import { join } from 'node:path'
 import { app } from 'electron'
-import { Controller, IpcHandle, AppEvent, Inject } from 'electron-mvc'
+import { Controller, IpcHandle, AppEvent, Inject } from '@electrum/common'
 import { ConfigService } from './config.service'
 
 @Controller('app')

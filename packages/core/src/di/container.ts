@@ -1,6 +1,9 @@
-import { META, readMetadata } from '../constants/metadata-keys'
-import type { InjectionPoint } from '../decorators/inject.decorator'
-import type { Scope } from '../decorators/injectable.decorator'
+import {
+  META,
+  readMetadata,
+  type InjectionPoint,
+  type Scope,
+} from '@electrum/common'
 
 type Token = Function | string | symbol
 
@@ -46,8 +49,8 @@ export class DIContainer {
   resolve<T = any>(token: Token): T {
     if (typeof token === 'symbol') {
       const tokenStr = token.description || ''
-      if (tokenStr.startsWith('emvc:window:')) {
-        const windowName = tokenStr.replace('emvc:window:', '')
+      if (tokenStr.startsWith('electrum:window:')) {
+        const windowName = tokenStr.replace('electrum:window:', '')
         const win = this.windowProvider(windowName)
         if (!win) throw new Error(`Window "${windowName}" not found`)
         return win as T
@@ -62,7 +65,7 @@ export class DIContainer {
       throw new Error(
         `Circular dependency detected: ${this.formatToken(token)} ` +
           `is being resolved while already in chain: ` +
-          `[${[...this.resolving].map((t) => this.formatToken(t)).join(' â†’ ')}]`,
+          `[${[...this.resolving].map((t) => this.formatToken(t)).join(' â†?')}]`,
       )
     }
 
@@ -125,7 +128,7 @@ export class DIContainer {
   has(token: Token): boolean {
     if (typeof token === 'symbol') {
       const desc = token.description || ''
-      if (desc.startsWith('emvc:window:')) return true
+      if (desc.startsWith('electrum:window:')) return true
     }
     return this.providers.has(token) || this.singletons.has(token)
   }

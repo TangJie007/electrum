@@ -1,10 +1,8 @@
 import { ipcMain } from 'electron'
-import { META, readMetadata } from '../constants/metadata-keys'
+import { META, readMetadata, Logger, type IpcHandlerEntry } from '@electrum/common'
 import type { DIContainer } from '../di/container'
 import type { ScannedModule } from '../module/scanner'
 import type { MiddlewarePipeline } from '../middleware/pipeline'
-import { Logger } from '../logger/logger'
-import type { IpcHandlerEntry } from '../decorators/ipc.decorator'
 
 export class IpcBridge {
   private logger = new Logger('IpcBridge')

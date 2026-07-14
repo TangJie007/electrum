@@ -1,0 +1,27 @@
+# Spec 文件: ElectronException 与 IpcErrorResponse
+# 模块: 错误处理
+# 生成时间: 2026-07-14
+# 版本: 1.0.0
+
+spec:
+  id: "错误处理-ElectronException 与 IpcErrorResponse"
+  name: "ElectronException 与 IpcErrorResponse"
+  module: "错误处理"
+  description: "统一错误基类与 NotFound/Forbidden/Validation；toJSON 产出 __error/code/message，开发态可带 stack"
+  status: "draft"
+  priority: "high"
+  tags: []
+  acceptance:
+  - "ElectronException.toJSON 含 __error:true"
+  - "ValidationException 将 errors 放入 details"
+  - "生产环境默认不暴露 stack，开发环境可暴露"
+  dependencies: []
+  notes: ""
+  changelog:
+    - date: "2026-07-14"
+      author: "AI"
+      summary: "初始版本，由 PRD 解析生成"
+      changes:
+        - "全量生成"
+  version: "1.0.0"
+  updated_at: "2026-07-14"

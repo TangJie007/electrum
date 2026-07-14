@@ -1,0 +1,26 @@
+# Spec 文件: electron-vite 集成预设
+# 模块: HMR 与开发体验
+# 生成时间: 2026-07-14
+# 版本: 1.0.0
+
+spec:
+  id: "HMR 与开发体验-electron-vite 集成预设"
+  name: "electron-vite 集成预设"
+  module: "HMR 与开发体验"
+  description: "提供与 electron-vite 开箱集成的开发预设（路线图 v0.5）"
+  status: "draft"
+  priority: "low"
+  tags: []
+  acceptance:
+  - "文档或包中存在可用的 electron-vite 集成方式"
+  - "示例 basic 可在开发模式启动并联调"
+  dependencies: []
+  notes: ""
+  changelog:
+    - date: "2026-07-14"
+      author: "AI"
+      summary: "初始版本，由 PRD 解析生成"
+      changes:
+        - "全量生成"
+  version: "1.0.0"
+  updated_at: "2026-07-14"

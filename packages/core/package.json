@@ -1,7 +1,7 @@
 {
-  "name": "electron-mvc",
+  "name": "@electrum/core",
   "version": "0.1.0",
-  "description": "NestJS-inspired MVC framework for Electron, powered by TS5 native decorators",
+  "description": "Electrum runtime — DI, module scanner, IPC bridge, application bootstrap",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -24,7 +24,9 @@
     "electron": ">=20.0.0",
     "typescript": ">=5.2.0"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@electrum/common": "workspace:*"
+  },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "electron": "^32.0.0",
@@ -34,6 +36,7 @@
   },
   "keywords": [
     "electron",
+    "electrum",
     "framework",
     "mvc",
     "dependency-injection",
@@ -41,7 +44,8 @@
     "ipc",
     "nestjs",
     "typescript5",
-    "stage3-decorators"
+    "stage3-decorators",
+    "symbol-metadata"
   ],
   "license": "MIT"
 }

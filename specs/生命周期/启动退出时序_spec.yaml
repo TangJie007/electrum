@@ -1,0 +1,26 @@
+# Spec 文件: 启动退出时序
+# 模块: 生命周期
+# 生成时间: 2026-07-14
+# 版本: 1.0.0
+
+spec:
+  id: "生命周期-启动退出时序"
+  name: "启动退出时序"
+  module: "生命周期"
+  description: "whenReady 后注册 IPC/Event/Window，再 onModuleInit→onAppReady；before-quit 触发 onModuleDestroy"
+  status: "draft"
+  priority: "high"
+  tags: []
+  acceptance:
+  - "启动顺序符合文档时序图"
+  - "应用退出路径触发 onModuleDestroy"
+  dependencies: []
+  notes: ""
+  changelog:
+    - date: "2026-07-14"
+      author: "AI"
+      summary: "初始版本，由 PRD 解析生成"
+      changes:
+        - "全量生成"
+  version: "1.0.0"
+  updated_at: "2026-07-14"

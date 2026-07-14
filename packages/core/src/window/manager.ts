@@ -1,8 +1,6 @@
 import { BrowserWindow } from 'electron'
-import { META, readMetadata } from '../constants/metadata-keys'
+import { META, readMetadata, Logger, type WindowOptions } from '@electrum/common'
 import type { DIContainer } from '../di/container'
-import { Logger } from '../logger/logger'
-import type { WindowOptions } from '../decorators/window.decorator'
 import type { ScannedModule } from '../module/scanner'
 
 export class WindowManager {

@@ -1,0 +1,26 @@
+# Spec 文件: 官方插件包命名预留
+# 模块: 插件系统
+# 生成时间: 2026-07-14
+# 版本: 1.0.0
+
+spec:
+  id: "插件系统-官方插件包命名预留"
+  name: "官方插件包命名预留"
+  module: "插件系统"
+  description: "预留 @electrum/plugin-updater/tray/hotkey 等扩展包命名与接入方式（不进入 MVP）"
+  status: "draft"
+  priority: "low"
+  tags: []
+  acceptance:
+  - "文档/脚手架约定 plugin-* 包名"
+  - "至少一个插件包可按 Plugin 接口演示接入"
+  dependencies: []
+  notes: ""
+  changelog:
+    - date: "2026-07-14"
+      author: "AI"
+      summary: "初始版本，由 PRD 解析生成"
+      changes:
+        - "全量生成"
+  version: "1.0.0"
+  updated_at: "2026-07-14"

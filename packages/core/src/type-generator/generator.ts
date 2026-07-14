@@ -1,8 +1,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { META, readMetadata } from '../constants/metadata-keys'
+import { META, readMetadata, type IpcHandlerEntry } from '@electrum/common'
 import type { ScannedModule } from '../module/scanner'
-import type { IpcHandlerEntry } from '../decorators/ipc.decorator'
 
 export class TypeGenerator {
   constructor(private scannedModules: ScannedModule[]) {}

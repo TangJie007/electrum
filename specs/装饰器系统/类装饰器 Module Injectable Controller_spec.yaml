@@ -1,0 +1,27 @@
+# Spec 文件: 类装饰器 Module Injectable Controller
+# 模块: 装饰器系统
+# 生成时间: 2026-07-14
+# 版本: 1.0.0
+
+spec:
+  id: "装饰器系统-类装饰器 Module Injectable Controller"
+  name: "类装饰器 Module Injectable Controller"
+  module: "装饰器系统"
+  description: "TS5 类装饰器将模块配置、可注入作用域、Controller 通道前缀写入 context.metadata"
+  status: "draft"
+  priority: "high"
+  tags: []
+  acceptance:
+  - "@Module 写入 imports/controllers/providers/exports/declarations"
+  - "@Injectable 支持 scope singleton|transient，默认 singleton"
+  - "@Controller(prefix) 写入前缀，可与无前缀空串组合"
+  dependencies: []
+  notes: ""
+  changelog:
+    - date: "2026-07-14"
+      author: "AI"
+      summary: "初始版本，由 PRD 解析生成"
+      changes:
+        - "全量生成"
+  version: "1.0.0"
+  updated_at: "2026-07-14"

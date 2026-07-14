@@ -4,7 +4,7 @@ import {
   OnModuleInit,
   OnModuleDestroy,
   NotFoundException,
-} from 'electron-mvc'
+} from '@electrum/common'
 import { promises as fs } from 'node:fs'
 import { watch, type FSWatcher } from 'node:fs'
 import type { AppConfig } from '../config.service'

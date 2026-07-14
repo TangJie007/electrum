@@ -1,4 +1,4 @@
-import { Module } from 'electron-mvc'
+import { Module } from '@electrum/common'
 import { WindowModule } from './window/window.module'
 import { FileModule } from './file/file.module'
 import { AppController } from './app.controller'

@@ -1,0 +1,27 @@
+# Spec 文件: 跨窗口通信
+# 模块: 窗口管理
+# 生成时间: 2026-07-14
+# 版本: 1.0.0
+
+spec:
+  id: "窗口管理-跨窗口通信"
+  name: "跨窗口通信"
+  module: "窗口管理"
+  description: "WindowManager.sendTo 与 broadcast 向未销毁窗口 webContents.send"
+  status: "draft"
+  priority: "medium"
+  tags: []
+  acceptance:
+  - "sendTo 仅目标窗口收到消息"
+  - "broadcast 所有存活窗口收到"
+  - "窗口已 destroy 时不抛未捕获错误"
+  dependencies: []
+  notes: ""
+  changelog:
+    - date: "2026-07-14"
+      author: "AI"
+      summary: "初始版本，由 PRD 解析生成"
+      changes:
+        - "全量生成"
+  version: "1.0.0"
+  updated_at: "2026-07-14"
