@@ -1,0 +1,16 @@
+{
+  "name": "electrum",
+  "version": "0.1.0",
+  "private": true,
+  "description": "NestJS-inspired MVC framework for Electron, powered by TS5 native decorators",
+  "scripts": {
+    "build": "pnpm --filter electron-mvc build",
+    "dev:example": "pnpm --filter @electrum/example-basic dev",
+    "build:example": "pnpm --filter @electrum/example-basic build",
+    "test": "pnpm --filter electron-mvc test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}
