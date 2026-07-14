@@ -10,11 +10,12 @@
 | 顺序 | 文档 | 对应源码 |
 |------|------|----------|
 | 1 | [架构总览](./architecture.md) | `application.ts`、`index.ts` |
-| 2 | [模块扫描与 DI](./di-and-modules.md) | `module/scanner.ts`、`di/container.ts` |
-| 3 | [IPC 桥接与中间件](./ipc-and-middleware.md) | `bridge/ipc-bridge.ts`、`middleware/pipeline.ts` |
-| 4 | [窗口 / 事件 / 生命周期](./window-event-lifecycle.md) | `window/`、`bridge/event-bridge.ts`、`lifecycle/` |
-| 5 | [类型生成与插件](./types-and-plugins.md) | `type-generator/`、`plugin/` |
-| 6 | [Specs ↔ Core 对照](./specs-mapping.md) | `specs/` 与实现覆盖关系 |
+| 2 | [ModuleScanner 设计](./module-scanner.md) | `module/scanner.ts` |
+| 3 | [模块扫描与 DI](./di-and-modules.md) | `module/scanner.ts`、`di/container.ts` |
+| 4 | [IPC 桥接与中间件](./ipc-and-middleware.md) | `bridge/ipc-bridge.ts`、`middleware/pipeline.ts` |
+| 5 | [窗口 / 事件 / 生命周期](./window-event-lifecycle.md) | `window/`、`bridge/event-bridge.ts`、`lifecycle/` |
+| 6 | [类型生成与插件](./types-and-plugins.md) | `type-generator/`、`plugin/` |
+| 7 | [Specs ↔ Core 对照](./specs-mapping.md) | `specs/` 与实现覆盖关系 |
 
 边读边对照示例：`examples/basic/src/main/`。
 

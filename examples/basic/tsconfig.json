@@ -8,8 +8,5 @@
       "@electrum/core": ["../../packages/core/src"]
     }
   },
-  "include": [
-    "src/main/**/*",
-    "src/preload/**/*"
-  ]
+  "include": ["src/main/**/*", "src/preload/**/*"]
 }

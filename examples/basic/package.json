@@ -11,10 +11,12 @@
   },
   "dependencies": {
     "@electrum/common": "workspace:*",
-    "@electrum/core": "workspace:*"
+    "@electrum/core": "workspace:*",
+    "vue": "^3.5.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@vitejs/plugin-vue": "^5.2.0",
     "electron": "^32.0.0",
     "electron-vite": "^2.3.0",
     "typescript": "^5.5.0",

@@ -1,8 +1,17 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "lib": ["ES2022", "DOM", "DOM.Iterable", "ESNext.Decorators"],
-    "types": []
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "preserve",
+    "types": ["vite/client"],
+    "isolatedModules": true,
+    "noEmit": true
   },
-  "include": ["src/renderer/**/*"]
+  "include": [
+    "src/renderer/env.d.ts",
+    "src/renderer/**/*.ts",
+    "src/renderer/**/*.vue"
+  ]
 }

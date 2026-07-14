@@ -2,7 +2,7 @@
 
 对应源码：
 
-- `packages/core/src/module/scanner.ts`
+- `packages/core/src/module/scanner.ts` — 详细设计见 [ModuleScanner 设计说明](./module-scanner.md)
 - `packages/core/src/di/container.ts`
 
 ## 1. ModuleScanner：把模块树变成「已注册表」
@@ -48,7 +48,7 @@ walk(M):
 | `{ provide, useClass }` | 别名/替换实现 |
 | `{ provide, useFactory, inject }` | 工厂，先 resolve inject 列表 |
 
-> 当前实现里，**模块 exports 可见性**尚未做成隔离边界；扫描出的 Provider 是放进**同一个**全局 `DIContainer` 的。读 exports 相关 Spec 时要心里有数。
+> Provider 一律注册进**同一个**全局 `DIContainer`，注册后任意模块均可 `@Inject`（无 Nest 式 exports 边界）。
 
 ## 2. DIContainer：无参 new + 字段注入
 

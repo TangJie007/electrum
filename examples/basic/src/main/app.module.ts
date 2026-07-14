@@ -1,11 +1,12 @@
 import { Module } from '@electrum/common'
 import { WindowModule } from './window/window.module'
 import { FileModule } from './file/file.module'
+import { UserModule } from './user/user.module'
 import { AppController } from './app.controller'
 import { ConfigService } from './config.service'
 
 @Module({
-  imports: [WindowModule, FileModule],
+  imports: [WindowModule, FileModule, UserModule],
   controllers: [AppController],
   providers: [
     ConfigService,
@@ -17,6 +18,5 @@ import { ConfigService } from './config.service'
       }),
     },
   ],
-  exports: [ConfigService],
 })
 export class AppModule {}

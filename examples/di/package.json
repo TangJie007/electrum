@@ -1,0 +1,17 @@
+{
+  "name": "@electrum/example-di",
+  "version": "0.1.0",
+  "private": true,
+  "description": "From-scratch minimal reimplementation of @electrum/core DI",
+  "type": "module",
+  "scripts": {
+    "start": "vitest run --config vitest.config.ts",
+    "demo": "tsx src/demo.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  }
+}

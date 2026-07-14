@@ -6,10 +6,9 @@ export interface AppEventEntry {
 }
 
 export function AppEvent(eventName: string) {
-  return (method: Function, context: ClassMethodDecoratorContext): Function => {
+  return (_method: Function, context: ClassMethodDecoratorContext): void => {
     const handlers = (context.metadata![META.APP_EVENT] as AppEventEntry[]) || []
     handlers.push({ event: eventName, method: context.name })
     context.metadata![META.APP_EVENT] = handlers
-    return method
   }
 }

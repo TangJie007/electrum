@@ -355,7 +355,6 @@ export interface ModuleMetadata {
   imports?: Function[]
   controllers?: Function[]
   providers?: (Function | ValueProvider | ClassProvider | FactoryProvider)[]
-  exports?: (Function | string | symbol)[]
   /** 声明式窗口类 */
   declarations?: Function[]
 }
@@ -383,7 +382,6 @@ export interface FactoryProvider {
  *   imports: [UserModule],
  *   controllers: [AppController],
  *   providers: [AppService],
- *   exports: [AppService],
  * })
  * export class AppModule {}
  */
@@ -998,20 +996,10 @@ export class ModuleScanner {
 }
 ```
 
-#### 4.3.1 模块可见性规则
+#### 4.3.1 模块与 DI 可见性
 
-```
-ModuleA
-  ├── imports: [ModuleB]
-  ├── providers: [ServiceA]     ← 仅 ModuleA 内部可见
-  ├── exports: [ServiceA]       ← 导出后，import ModuleA 的模块可见
-  ├── declarations: [MainWindow] ← 窗口声明
-  └── controllers: [ControllerA]
-
-ModuleB
-  ├── imports: [ModuleA]        ← 可以使用 ModuleA 导出的 ServiceA
-  └── providers: [ServiceB]
-```
+Provider 注册进全局 `DIContainer` 后，任意模块均可注入（无 Nest 式 `exports` 边界）。
+`@Module` 主要用于组织 `imports` / `controllers` / `providers` / `declarations`。
 
 ---
 
@@ -1952,7 +1940,6 @@ import { ConfigService } from './config.service'
       }),
     },
   ],
-  exports: [ConfigService],
 })
 export class AppModule {}
 
@@ -1960,7 +1947,6 @@ export class AppModule {}
 @Module({
   controllers: [FileController],
   providers: [FileService],
-  exports: [FileService],
 })
 export class FileModule {}
 

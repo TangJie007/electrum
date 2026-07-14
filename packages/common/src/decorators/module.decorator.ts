@@ -23,10 +23,13 @@ export type Provider =
   | FactoryProvider
 
 export interface ModuleMetadata {
+  /** 导入的子模块；扫描时先 walk imports，再注册本模块 */
   imports?: Function[]
+  /** IPC / 业务控制器（@Controller）；会注册进 DI，供 IpcBridge resolve */
   controllers?: Function[]
+  /** 可注入的 Provider（类 / useValue / useClass / useFactory）；注册后全局可见 */
   providers?: Provider[]
-  exports?: (Function | string | symbol)[]
+  /** 窗口声明类（@WindowDeclaration）；供 WindowManager 建窗 */
   declarations?: Function[]
 }
 

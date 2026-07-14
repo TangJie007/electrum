@@ -1,6 +1,6 @@
 # Spec 目录
 
-> 由 wetspec 管理 | 功能总数：34  
+> 由 wetspec 管理 | 功能总数：33  
 > 来源 PRD：待补充  
 > 最后索引更新：2026-07-14
 
@@ -18,7 +18,7 @@
 | [应用启动与 API](./应用启动与 API/INDEX.md) | 2 | Application 运行时 API、createApp 启动编排 |
 | [插件系统](./插件系统/INDEX.md) | 2 | Plugin 接口与安装生命周期、官方插件包命名预留 |
 | [日志系统](./日志系统/INDEX.md) | 1 | 分级上下文 Logger |
-| [模块系统](./模块系统/INDEX.md) | 2 | ModuleScanner 模块树扫描、模块可见性与 exports |
+| [模块系统](./模块系统/INDEX.md) | 1 | ModuleScanner 模块树扫描 |
 | [测试工具](./测试工具/INDEX.md) | 2 | Electron Mock 与元数据测试支撑、测试容器 createTestContainer |
 | [生命周期](./生命周期/INDEX.md) | 2 | 三钩子接口与并行执行、启动退出时序 |
 | [窗口管理](./窗口管理/INDEX.md) | 2 | 声明式窗口创建与 DI 集成、跨窗口通信 |

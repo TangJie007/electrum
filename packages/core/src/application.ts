@@ -15,11 +15,7 @@ import type { Plugin } from './plugin/plugin.interface'
  *
  * 职责：持有 DI / 管道 / 窗口等组件，在 start() 中按固定顺序：
  * 扫描模块 → 等 Electron ready → 建窗口 → 绑 IPC/App 事件 → 跑生命周期钩子。
- *
- * 业务侧通常不直接 `new`，而是：
- * ```ts
- * await createApp(AppModule).start()
- * ```
+ * 
  */
 export class Application {
   /** 全局 DI 容器：注册 Provider、resolve Controller、属性注入 */
@@ -68,7 +64,7 @@ export class Application {
   /** 全局 Guard：所有 IPC 通道执行前校验 */
   useGlobalGuards(...guards: Function[]): this {
     this.pipeline.useGlobalGuards(...guards)
-    return this
+    return this 
   }
 
   /** 全局 Pipe：变换 Handle 的第一个业务参数 */

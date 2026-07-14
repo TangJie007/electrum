@@ -28,7 +28,7 @@ specs/ 需求分片
 | 依赖注入容器 | 属性注入解析 | `di/container.ts` | ✅ 基本有 | `new` + 读 `META.INJECTIONS` |
 | 依赖注入容器 | 作用域与循环依赖检测 | `di/container.ts` | ✅ 基本有 | singleton / transient + resolving 链 |
 | 模块系统 | ModuleScanner 模块树扫描 | `module/scanner.ts` | ✅ 基本有 | DFS imports，注册 Provider |
-| 模块系统 | 模块可见性与 exports | `module/scanner.ts` | ⚠️ 偏弱 | 未做模块级隔离，全局同一容器 |
+| 模块系统 | ModuleScanner 模块树扫描 | `module/scanner.ts` | ✅ 代码有 | Provider 全局同一容器 |
 | IPC 桥接 | Controller 自动绑定 ipcMain | `bridge/ipc-bridge.ts` | ✅ 基本有 | `prefix:channel` → handle/on |
 | IPC 桥接 | IPC 参数位置约定 | `ipc-bridge` + `pipeline` | ✅ 基本有 | Handle 无 event；On 有 event |
 | 中间件链 | Guard Pipe Interceptor Filter 管道 | `middleware/pipeline.ts` | ✅ 代码有 | 缺按 Spec AC 的正式验收 |
@@ -88,7 +88,7 @@ Core **依赖并读取** common 的元数据，但不「实现」装饰器本身
 5. 中间件链  
 6. 窗口 + 事件 + 生命周期  
 
-后续再补：类型生成精确化、exports 隔离、HMR、官方插件。
+后续再补：类型生成精确化、HMR、官方插件。
 
 相关文档：
 

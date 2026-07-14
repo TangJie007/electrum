@@ -6,3 +6,4 @@ Demonstrates `@electrum/common` + `@electrum/core` with:
 - Field injection and lifecycle hooks
 - Declarative windows
 - Global filters / interceptors
+- Renderer: Vue 3 (`src/renderer/App.vue`)

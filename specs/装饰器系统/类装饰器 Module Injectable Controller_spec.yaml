@@ -12,7 +12,7 @@ spec:
   priority: "high"
   tags: []
   acceptance:
-  - "@Module 写入 imports/controllers/providers/exports/declarations"
+  - "@Module 写入 imports/controllers/providers/declarations"
   - "@Injectable 支持 scope singleton|transient，默认 singleton"
   - "@Controller(prefix) 写入前缀，可与无前缀空串组合"
   dependencies: []

@@ -8,9 +8,9 @@ export interface MethodMiddlewareEntry {
 function createMiddlewareDecorator(classKey: symbol, methodKey: symbol) {
   return (...middlewares: Function[]) => {
     return function (
-      target: Function,
+      _target: Function | object,
       context: ClassDecoratorContext | ClassMethodDecoratorContext,
-    ): Function | void {
+    ): void {
       if (context.kind === 'class') {
         const existing = (context.metadata![classKey] as Function[]) || []
         context.metadata![classKey] = [...middlewares, ...existing]
@@ -24,7 +24,6 @@ function createMiddlewareDecorator(classKey: symbol, methodKey: symbol) {
         }
         context.metadata![methodKey] = entries
       }
-      return target
     }
   }
 }
