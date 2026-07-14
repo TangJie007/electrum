@@ -2,7 +2,8 @@
 
 基于 TypeScript 5 Stage 3 原生装饰器的 Electron 主进程 MVC 框架（零运行时依赖）。
 
-设计思路见 [`electron-mvc-framework-design.md`](./electron-mvc-framework-design.md)。
+设计思路见 [`electron-mvc-framework-design.md`](./electron-mvc-framework-design.md)。  
+文档入口：[docs/](./docs/README.md) · Core 学习：[docs/core/](./docs/core/README.md)。
 
 ## 结构
 

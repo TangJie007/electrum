@@ -16,7 +16,7 @@ export { WindowManager } from './window/manager'
 export { TypeGenerator } from './type-generator/generator'
 export type { Plugin } from './plugin/plugin.interface'
 
-// Re-export common APIs for convenience (Nest-like: prefer @electrum/common for app code)
+// 为方便使用，再导出 common 的公共 API（更推荐业务代码从 @electrum/common 导入装饰器/接口）
 export {
   METADATA_READY,
   META,
