@@ -8,15 +8,19 @@
 2. **启动时** `createApp(AppModule).start()` 会：扫描模块树 → 注册 DI → 建窗口 → 绑 IPC / 事件 → 调生命周期钩子。
 3. Electrum 使用 **TypeScript 5 Stage 3 原生装饰器**，不依赖 `experimentalDecorators` 和 `reflect-metadata`。
 
-## 两包分工
+## 包分工
 
 | 包 | 职责 | 典型导出 |
 |----|------|----------|
 | `@electrum/common` | 装饰器、接口、异常、Logger | `Module`、`Injectable`、`Controller`、`IpcHandle`、`Inject` |
 | `@electrum/core` | 运行时引擎 | `createApp`、DI、扫描、IPC / Event bridge、窗口管理 |
+| `@electrum/preload` | preload 安全桥 | `exposeApi`、`IpcError` |
+| `@electrum/client` | 渲染进程 IPC 客户端 | `createClient` |
+| `@electrum/testing` | 测试辅助 | `createTestContainer` |
 
-业务代码日常从 `@electrum/common` 写声明，用 `@electrum/core` 的 `createApp` 启动。  
-`@electrum/core` 也会 re-export common 的公共 API，可以从 core 一把导入；学习时建议分清「声明」和「运行时」。
+主进程日常从 `@electrum/common` 写声明，用 `@electrum/core` 的 `createApp` 启动。  
+渲染进程：`@electrum/preload` + `@electrum/client`。详见 [Preload](./preload)、[Client](./client)。  
+`@electrum/core` 也会 re-export common 的公共 API；学习时建议分清「声明」和「运行时」。
 
 ## 能力一览（v0.1）
 
@@ -27,6 +31,7 @@
 - 中间件链（Guard / Pipe / Interceptor / Filter）
 - 生命周期钩子、日志、异常类型
 - IPC 通道类型骨架生成（`generateTypes`）
+- 渲染侧：`@electrum/preload` / `@electrum/client`（见 [Preload](./preload)、[Client](./client)）
 
 ## 渐进式引入
 

@@ -6,6 +6,8 @@ import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const commonSrc = resolve(__dirname, '../../packages/common/src')
 const coreSrc = resolve(__dirname, '../../packages/core/src')
+const preloadSrc = resolve(__dirname, '../../packages/preload/src')
+const clientSrc = resolve(__dirname, '../../packages/client/src')
 
 export default defineConfig({
   main: {
@@ -29,7 +31,16 @@ export default defineConfig({
     },
   },
   preload: {
-    plugins: [externalizeDepsPlugin()],
+    resolve: {
+      alias: {
+        '@electrum/preload': resolve(preloadSrc, 'index.ts'),
+      },
+    },
+    plugins: [
+      externalizeDepsPlugin({
+        exclude: ['@electrum/preload'],
+      }),
+    ],
     build: {
       rollupOptions: {
         input: {
@@ -40,6 +51,11 @@ export default defineConfig({
   },
   renderer: {
     root: resolve(__dirname, 'src/renderer'),
+    resolve: {
+      alias: {
+        '@electrum/client': resolve(clientSrc, 'index.ts'),
+      },
+    },
     plugins: [vue()],
     build: {
       rollupOptions: {

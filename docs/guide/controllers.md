@@ -58,7 +58,10 @@ fullChannel = prefix ? `${prefix}:${channel}` : channel
 
 ```ts
 // preload / renderer
-const content = await window.api.invoke('file:read', '/path/to/file')
+import { createClient } from '@electrum/client'
+
+const api = createClient<IpcApi>()
+const content = await api.file.read('/path/to/file')
 ```
 
 若 Controller 前缀为 `file`，方法装饰器为 `@IpcHandle('write')`，则通道为 `file:write`。方法名本身（如 `read`、`write`）可以任意选择，框架不依赖方法名做路由。
@@ -78,7 +81,7 @@ export class AppController {
 
 ## `@IpcHandle`
 
-对应 Electron 的 `ipcMain.handle`。渲染进程用 **`ipcRenderer.invoke`**（示例里一般是 `window.api.invoke`）发起一次**请求-响应**调用；主进程方法 `return` 的值（或 Promise）会回到调用方。
+对应 Electron 的 `ipcMain.handle`。渲染进程用 **`ipcRenderer.invoke`**（经 `@electrum/preload` 暴露为 `window.api.invoke`，或 `@electrum/client` 的 `api.xxx.yyy()`）发起一次**请求-响应**调用；主进程方法 `return` 的值（或 Promise）会回到调用方。
 
 **适合：**
 
@@ -95,13 +98,13 @@ export class UserController {
   @Inject(UserService)
   users!: UserService
 
-  // 渲染: await window.api.invoke('user:list')
+  // 渲染: await api.user.list()  或  window.api.invoke('user:list')
   @IpcHandle('list')
   list() {
     return this.users.list()
   }
 
-  // 渲染: await window.api.invoke('user:get', 1)
+  // 渲染: await api.user.get(1)
   @IpcHandle('get')
   get(id: number) {
     return this.users.get(id)
@@ -290,4 +293,5 @@ createApp(AppModule).generateTypes('src/renderer/types/api.d.ts')
 
 ## 下一步
 
-→ [Providers](./providers)
+→ [Providers](./providers)  
+→ [Preload](./preload) / [Client](./client)（渲染侧怎么调这些通道）

@@ -63,7 +63,19 @@ class HelloController {
 class AppModule {}
 
 await createApp(AppModule).start()
-// 渲染进程: window.api.invoke('hello:greet')
+```
+
+渲染链路：
+
+```ts
+// preload
+import { exposeApi } from '@electrum/preload'
+exposeApi()
+
+// renderer
+import { createClient } from '@electrum/client'
+const api = createClient<IpcApi>()
+await api.hello.greet() // ≡ invoke('hello:greet')
 ```
 
 ## 在自己的 Electron 项目中使用
@@ -74,9 +86,30 @@ await createApp(AppModule).start()
 {
   "dependencies": {
     "@electrum/common": "workspace:*",
-    "@electrum/core": "workspace:*"
+    "@electrum/core": "workspace:*",
+    "@electrum/preload": "workspace:*",
+    "@electrum/client": "workspace:*"
   }
 }
+```
+
+Preload（完整文件通常只需几行）：
+
+```ts
+// src/preload/index.ts
+import { exposeApi } from '@electrum/preload'
+
+exposeApi() // → window.api.invoke / on / send
+```
+
+渲染进程用 `@electrum/client` 简化调用：
+
+```ts
+import { createClient } from '@electrum/client'
+
+const api = createClient<IpcApi>()
+await api.user.list()      // ≡ window.api.invoke('user:list')
+await api.file.read(path)  // ≡ window.api.invoke('file:read', path)
 ```
 
 主进程入口推荐：
@@ -104,5 +137,6 @@ pnpm docs:dev
 ## 下一步
 
 - 了解 Controllers：[Controllers](./controllers)
+- Preload / 渲染客户端：[Preload](./preload)、[Client](./client)
 - 分包与装饰器约定：[核心概念](./concepts)
 - 对照完整示例：[示例项目](./examples)

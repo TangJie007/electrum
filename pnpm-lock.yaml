@@ -18,12 +18,18 @@ importers:
 
   examples/basic:
     dependencies:
+      '@electrum/client':
+        specifier: workspace:*
+        version: link:../../packages/client
       '@electrum/common':
         specifier: workspace:*
         version: link:../../packages/common
       '@electrum/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@electrum/preload':
+        specifier: workspace:*
+        version: link:../../packages/preload
       vue:
         specifier: ^3.5.0
         version: 3.5.39(typescript@5.9.3)
@@ -62,6 +68,18 @@ importers:
         specifier: ^2.0.0
         version: 2.1.9(@types/node@22.20.1)
 
+  packages/client:
+    devDependencies:
+      tsup:
+        specifier: ^8.0.0
+        version: 8.5.1(postcss@8.5.19)(tsx@4.23.1)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.5.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9(@types/node@22.20.1)
+
   packages/common:
     devDependencies:
       '@types/node':
@@ -85,6 +103,24 @@ importers:
       '@electrum/common':
         specifier: workspace:*
         version: link:../common
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.1
+      electron:
+        specifier: ^32.0.0
+        version: 32.3.3
+      tsup:
+        specifier: ^8.0.0
+        version: 8.5.1(postcss@8.5.19)(tsx@4.23.1)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.5.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9(@types/node@22.20.1)
+
+  packages/preload:
     devDependencies:
       '@types/node':
         specifier: ^22.0.0

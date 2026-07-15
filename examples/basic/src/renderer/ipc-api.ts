@@ -1,0 +1,26 @@
+export interface IpcApi {
+  'app:info': () => Promise<{
+    name: string
+    version: string
+    electron: string
+    chrome: string
+    node: string
+    platform: string
+    demoFile: string
+  }>
+  'app:ping': (message: string) => Promise<{ echo: string; at: number }>
+  'file:read': (path: string) => Promise<string>
+  'file:write': (data: { path: string; content: string }) => Promise<{ ok: true; path: string }>
+  'user:list': () => Promise<Array<{ id: number; name: string; email: string }>>
+  'user:get': (id: number) => Promise<{ id: number; name: string; email: string }>
+  'user:create': (data: {
+    name: string
+    email: string
+  }) => Promise<{ id: number; name: string; email: string }>
+  'user:update': (data: {
+    id: number
+    name?: string
+    email?: string
+  }) => Promise<{ id: number; name: string; email: string }>
+  'user:remove': (id: number) => Promise<{ ok: true }>
+}

@@ -4,10 +4,10 @@
   "private": true,
   "description": "NestJS-inspired MVC framework for Electron (@electrum/*)",
   "scripts": {
-    "build": "pnpm --filter @electrum/common --filter @electrum/core --filter @electrum/testing run build",
+    "build": "pnpm --filter @electrum/common --filter @electrum/core --filter @electrum/preload --filter @electrum/client --filter @electrum/testing run build",
     "dev:example": "pnpm --filter @electrum/example-basic dev",
     "build:example": "pnpm --filter @electrum/example-basic build",
-    "test": "pnpm --filter @electrum/common --filter @electrum/core run test",
+    "test": "pnpm --filter @electrum/common --filter @electrum/core --filter @electrum/preload --filter @electrum/client run test",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs"

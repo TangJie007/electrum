@@ -86,7 +86,7 @@ return chain()
 
 无 Filter 时内置默认：`INTERNAL` / `UNKNOWN`；dev 环境可附带 `stack`。
 
-> 渲染进程 Preload 需识别 `__error` 再 `throw`，见设计文档与 basic 示例的 preload。
+> 渲染进程 Preload 需识别 `__error` 再 `throw`；可直接用 `@electrum/preload` 的 `exposeApi()`（见 basic 示例）。
 
 ## 3. IpcContext
 

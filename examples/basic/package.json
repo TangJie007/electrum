@@ -10,8 +10,10 @@
     "preview": "electron-vite preview"
   },
   "dependencies": {
+    "@electrum/client": "workspace:*",
     "@electrum/common": "workspace:*",
     "@electrum/core": "workspace:*",
+    "@electrum/preload": "workspace:*",
     "vue": "^3.5.0"
   },
   "devDependencies": {

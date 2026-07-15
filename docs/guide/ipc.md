@@ -18,6 +18,13 @@ createApp(AppModule).generateTypes('src/renderer/types/api.d.ts')
 
 实现细节见 [类型生成与插件](/core/types-and-plugins)。管道行为见 [中间件](./middleware) 与 [IPC 与中间件](/core/ipc-and-middleware)。
 
+## 渲染侧调用
+
+- Preload 桥：[`@electrum/preload`](./preload) → `exposeApi()`
+- 嵌套客户端：[`@electrum/client`](./client) → `createClient()` / `api.user.list()`
+
 ## 下一步
 
+→ [Preload](./preload)  
+→ [Client](./client)  
 → [中间件](./middleware)

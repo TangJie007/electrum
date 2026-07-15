@@ -1,12 +1,13 @@
 # @electrum/example-basic
 
-Demonstrates `@electrum/common` + `@electrum/core` with:
+Demonstrates `@electrum/common` + `@electrum/core` + `@electrum/preload` + `@electrum/client` with:
 
 - Module / Controller / IPC handlers
 - Field injection and lifecycle hooks
 - Declarative windows
 - Global filters / interceptors
-- Renderer: Vue 3 (`src/renderer/App.vue`)
+- Preload: `exposeApi()` from `@electrum/preload`
+- Renderer: Vue 3 + `createClient()` (`api.user.list()`)
 
 ## Dev
 

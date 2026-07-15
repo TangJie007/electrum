@@ -40,7 +40,7 @@ createApp(AppModule).generateTypes('src/renderer/types/api.d.ts')
 ### 局限（学习时别误解）
 
 当前实现 **尚未** 用 ts-morph 抽真实参数/返回类型；一律 `any`。  
-路线图 v0.4 才是「精确类型 + preload 生成」。现在的生成器用于：
+路线图 v0.4 才是「精确类型 + 自动生成 preload 脚本」。**手写 preload** 已可用 `@electrum/preload` 的 `exposeApi()`；渲染调用用 `@electrum/client`。现在的类型生成器用于：
 
 - 保证通道名有类型键  
 - 给 `Window.api.invoke` 提供 channel 字面量联合的基础

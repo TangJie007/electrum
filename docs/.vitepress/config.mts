@@ -37,6 +37,8 @@ export default defineConfig({
             { text: '模块', link: '/guide/modules' },
             { text: '中间件', link: '/guide/middleware' },
             { text: '窗口与生命周期', link: '/guide/windows-lifecycle' },
+            { text: 'Preload', link: '/guide/preload' },
+            { text: 'Client', link: '/guide/client' },
             { text: 'IPC 通信（补充）', link: '/guide/ipc' },
           ],
         },

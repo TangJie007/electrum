@@ -1,15 +1,9 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
+import { createClient } from '@electrum/client'
+import type { IpcApi } from './ipc-api'
 
-interface AppInfo {
-  name: string
-  version: string
-  electron: string
-  chrome: string
-  node: string
-  platform: string
-  demoFile: string
-}
+const api = createClient<IpcApi>()
 
 const infoText = ref('加载中…')
 const pingText = ref('')
@@ -35,7 +29,7 @@ function setUserStatus(message: string, ok = true) {
 
 async function loadInfo() {
   try {
-    const info = (await window.api.invoke('app:info')) as AppInfo
+    const info = await api.app.info()
     infoText.value = JSON.stringify(info, null, 2)
     document.title = `${info.name} v${info.version}`
     if (info.demoFile) path.value = info.demoFile
@@ -46,7 +40,7 @@ async function loadInfo() {
 
 async function loadUsers() {
   try {
-    const users = await window.api.invoke('user:list')
+    const users = await api.user.list()
     usersText.value = JSON.stringify(users, null, 2)
   } catch (err: any) {
     usersText.value = String(err)
@@ -55,15 +49,15 @@ async function loadUsers() {
 }
 
 async function onPing() {
-  const res = await window.api.invoke('app:ping', 'hello-electrum')
+  const res = await api.app.ping('hello-electrum')
   pingText.value = JSON.stringify(res, null, 2)
 }
 
 async function onRead() {
   try {
-    const text = (await window.api.invoke('file:read', path.value)) as string
+    const text = await api.file.read(path.value)
     content.value = text
-    setStatus('读取成功'  + text)
+    setStatus('读取成功')
   } catch (err: any) {
     setStatus(`${err.code || 'ERROR'}: ${err.message}`, false)
   }
@@ -71,7 +65,7 @@ async function onRead() {
 
 async function onWrite() {
   try {
-    await window.api.invoke('file:write', {
+    await api.file.write({
       path: path.value,
       content: content.value,
     })
@@ -83,7 +77,7 @@ async function onWrite() {
 
 async function onCreateUser() {
   try {
-    await window.api.invoke('user:create', {
+    await api.user.create({
       name: userName.value || 'New User',
       email: userEmail.value || 'user@example.com',
     })
@@ -101,7 +95,7 @@ let offSaved: (() => void) | undefined
 onMounted(() => {
   void loadInfo()
   void loadUsers()
-  offSaved = window.api.on('file:saved', (savedPath) => {
+  offSaved = api.on('file:saved', (savedPath) => {
     setStatus(`已保存: ${savedPath}`)
   })
 })

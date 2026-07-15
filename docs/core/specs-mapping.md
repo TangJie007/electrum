@@ -11,8 +11,10 @@ specs/ 需求分片
     │
     ├── @electrum/common   ← 装饰器 / 元数据 / 异常 / Logger（声明层）
     ├── @electrum/core     ← 扫描 / DI / IPC / 管道 / 窗口 / 事件 / 生命周期（运行时）
+    ├── @electrum/preload  ← contextBridge、invoke 错误还原
+    ├── @electrum/client   ← 渲染侧 createClient / 嵌套调用
     ├── @electrum/testing  ← 测试容器
-    └── 工程 / 示例        ← 包体系、electron-vite、preload 约定等
+    └── 工程 / 示例        ← 包体系、electron-vite 等
 ```
 
 **Core 一句话**：把 common 写下的元数据读出来，装配容器，并绑到 Electron。
@@ -67,10 +69,12 @@ plugin/                 → 插件系统接口
 |-----------|----------|------|
 | TS5 装饰器元数据机制 | `@electrum/common` | polyfill、META、readMetadata |
 | 装饰器系统 | `@electrum/common` | `@Module` / `@IpcHandle` / `@Inject` 等 |
-| 错误处理 | `@electrum/common` + 示例 preload | 异常类在 common；渲染还原在示例 |
+| 错误处理 | `@electrum/common` + `@electrum/preload` | 异常类在 common；渲染还原用 `exposeApi()` |
 | 日志系统 | `@electrum/common` | `Logger` |
 | 包体系与工程化 | monorepo 根工程 | workspace / tsup / tsconfig |
 | 测试工具 | `@electrum/testing` | `createTestContainer` |
+| 渲染 Preload 桥 | `@electrum/preload` | `exposeApi` / `IpcError` |
+| 渲染 IPC 客户端 | `@electrum/client` | `createClient`（`api.user.list()`） |
 
 Core **依赖并读取** common 的元数据，但不「实现」装饰器本身。
 

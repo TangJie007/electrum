@@ -34,15 +34,19 @@ Electrum 提供开箱即用的应用结构，灵感来自 NestJS / Angular：
 - **Controllers** — 应用的 IPC 入口。用 `@Controller('file')` 声明前缀，用 `@IpcHandle('read')` 绑定通道 `file:read`。详见 [Controllers](./controllers)。
 - **Providers** — 用 `@Injectable()` 标注的服务；通过 `@Inject` 注入到 Controller 或其它服务。详见 [Providers](./providers)。
 - **Modules** — `@Module({ controllers, providers, imports, declarations })` 描述一块功能边界。详见 [模块](./modules)。
+- **Preload / Client** — 渲染侧安全桥与调用封装。详见 [Preload](./preload)、[Client](./client)。
 
-## 两包分工
+## 包分工
 
 ```
-@electrum/common  = 声明（装饰器写元数据）
-@electrum/core    = 执行（读元数据 → 建容器 → 绑 Electron）
+@electrum/common   = 声明（装饰器写元数据）
+@electrum/core     = 执行（读元数据 → 建容器 → 绑 Electron）
+@electrum/preload  = preload 桥（contextBridge + 错误还原）
+@electrum/client   = 渲染侧调用（api.user.list()）
 ```
 
-业务代码从 `@electrum/common` 写声明，用 `@electrum/core` 的 `createApp` 启动。装饰器本身不执行业务逻辑，只向 `Symbol.metadata` 写入配置；真正接线发生在 `createApp(AppModule).start()`。
+业务主进程：`@electrum/common` 写声明，`@electrum/core` 的 `createApp` 启动。  
+渲染链路：`preload` 里 `exposeApi()`，渲染里 `createClient()`。装饰器本身不执行业务，只写 `Symbol.metadata`；接线发生在 `createApp(AppModule).start()`。
 
 Electrum 使用 **TypeScript 5 Stage 3 原生装饰器**，不依赖 `experimentalDecorators` 与 `reflect-metadata`。
 

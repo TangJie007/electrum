@@ -12,7 +12,8 @@
 - 字段注入与生命周期钩子
 - 声明式窗口
 - 全局 Filter / Interceptor
-- 渲染进程：Vue 3（`src/renderer/App.vue`）
+- Preload：`@electrum/preload` 的 `exposeApi()`（`src/preload/index.ts`）
+- 渲染进程：Vue 3 + `@electrum/client` 的 `createClient()`（`api.user.list()` 等）
 
 启动：
 
@@ -31,7 +32,16 @@ app.useGlobalFilters(GlobalExceptionFilter)
 await app.start()
 ```
 
-推荐对照阅读目录：`src/main/app.module.ts`、`user/`、`file/`、`window/`。
+推荐对照阅读：
+
+| 路径 | 内容 |
+|------|------|
+| `src/main/app.module.ts` | 根模块 imports |
+| `src/main/user/`、`file/`、`window/` | 功能模块 |
+| `src/preload/index.ts` | `exposeApi()` |
+| `src/renderer/App.vue`、`ipc-api.ts` | `createClient<IpcApi>()` |
+
+Preload / Client 专题：[Preload](./preload)、[Client](./client)。
 
 ## examples/di — DI 机制拆解
 

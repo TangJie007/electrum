@@ -16,7 +16,9 @@ pnpm docs:preview  # 预览构建结果
 | 路径 | 说明 |
 |------|------|
 | `index.md` | 站点首页 |
-| `guide/` | 使用指南（概述 → Controllers → Providers → 模块…，对齐 NestJS 章节心智） |
+| `guide/` | 使用指南（概述 → Controllers → Providers → 模块 → Preload / Client…） |
+| `guide/preload.md` | `@electrum/preload` |
+| `guide/client.md` | `@electrum/client` |
 | `core/` | `@electrum/core` 实现学习（深入源码） |
 | `.vitepress/` | VitePress 配置 |
 

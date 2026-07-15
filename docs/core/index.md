@@ -24,8 +24,10 @@
 ## 一句话定位
 
 ```
-@electrum/common  = 声明（装饰器写元数据）
-@electrum/core    = 执行（读元数据 → 建容器 → 绑 Electron）
+@electrum/common   = 声明（装饰器写元数据）
+@electrum/core     = 执行（读元数据 → 建容器 → 绑 Electron）
+@electrum/preload  = preload 桥（见 [使用指南 · Preload](/guide/preload)）
+@electrum/client   = 渲染客户端（见 [使用指南 · Client](/guide/client)）
 ```
 
 应用侧日常写法：
