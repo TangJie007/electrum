@@ -92,5 +92,5 @@ Core **依赖并读取** common 的元数据，但不「实现」装饰器本身
 
 相关文档：
 
-- [Core 学习指南](./README.md)
+- [Core 学习指南](/core/)
 - [架构总览](./architecture.md)

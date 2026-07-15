@@ -1,10 +1,24 @@
-# Electrum 文档
+# Electrum 文档源码
 
-| 目录 / 文档 | 说明 |
-|-------------|------|
-| [core/](./core/README.md) | `@electrum/core` 实现学习（架构、DI、IPC、中间件…） |
-| [core/module-scanner.md](./core/module-scanner.md) | ModuleScanner 设计说明 |
-| [core/specs-mapping.md](./core/specs-mapping.md) | `specs/` 功能分片 ↔ core 源码对照 |
+本目录是 **VitePress** 站点根目录。
 
-设计总方案仍见仓库根目录 [`electron-mvc-framework-design.md`](../electron-mvc-framework-design.md)。  
-需求 Spec 目录：[`specs/`](../specs/)。
+## 本地预览
+
+```bash
+# 仓库根目录
+pnpm docs:dev      # 开发服务器
+pnpm docs:build    # 构建静态站
+pnpm docs:preview  # 预览构建结果
+```
+
+## 目录
+
+| 路径 | 说明 |
+|------|------|
+| `index.md` | 站点首页 |
+| `guide/` | 使用指南（面向使用者） |
+| `core/` | `@electrum/core` 实现学习（深入源码） |
+| `.vitepress/` | VitePress 配置 |
+
+设计总方案见仓库根目录 `electron-mvc-framework-design.md`。  
+需求 Spec 目录：`specs/`。

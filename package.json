@@ -7,7 +7,10 @@
     "build": "pnpm --filter @electrum/common --filter @electrum/core --filter @electrum/testing run build",
     "dev:example": "pnpm --filter @electrum/example-basic dev",
     "build:example": "pnpm --filter @electrum/example-basic build",
-    "test": "pnpm --filter @electrum/common --filter @electrum/core run test"
+    "test": "pnpm --filter @electrum/common --filter @electrum/core run test",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "engines": {
     "node": ">=18"
@@ -15,5 +18,8 @@
   "license": "MIT",
   "dependencies": {
     "@wetspace/wetspec-cli": "^1.2.2"
+  },
+  "devDependencies": {
+    "vitepress": "^1.6.4"
   }
 }

@@ -84,4 +84,4 @@ app.use({
 
 对照自测：在 `examples/basic` 打断点跟一遍 `createApp(...).start()`。
 
-返回：[Core 学习指南首页](./README.md)
+返回：[Core 学习指南首页](/core/)
