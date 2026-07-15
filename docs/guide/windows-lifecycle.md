@@ -1,5 +1,7 @@
 # 窗口与生命周期
 
+窗口与 `app` 事件独立于 Controllers，但仍通过 Module 的 `declarations` 与 `@WindowRef` / `@AppEvent` 接入同一套启动流程。
+
 ## 声明式窗口
 
 用 `@WindowDeclaration` 描述 `BrowserWindow`，再放入模块的 `declarations`：

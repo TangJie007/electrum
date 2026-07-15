@@ -3,9 +3,13 @@ import { META } from '../constants/metadata-keys'
 export interface InjectionPoint {
   propertyKey: string | symbol
   token: any
-  type: 'service' | 'window' | 'optional'
+  type: 'service' | 'window' | 'optional' | 'emit'
   windowName?: string
   optional?: boolean
+  /** @IpcEmit 通道名（不含 Controller 前缀） */
+  emitChannel?: string
+  /** @IpcEmit 目标窗；覆盖 Controller.window */
+  emitWindow?: string
 }
 
 export function Inject(token: any) {

@@ -24,19 +24,20 @@ export default defineConfig({
         {
           text: '开始',
           items: [
-            { text: '指南总览', link: '/guide/' },
+            { text: '概述', link: '/guide/' },
             { text: '快速开始', link: '/guide/getting-started' },
             { text: '核心概念', link: '/guide/concepts' },
           ],
         },
         {
-          text: '基础用法',
+          text: '基础',
           items: [
-            { text: '模块系统', link: '/guide/modules' },
-            { text: '依赖注入', link: '/guide/dependency-injection' },
-            { text: 'IPC 通信', link: '/guide/ipc' },
+            { text: 'Controllers', link: '/guide/controllers' },
+            { text: 'Providers', link: '/guide/providers' },
+            { text: '模块', link: '/guide/modules' },
             { text: '中间件', link: '/guide/middleware' },
             { text: '窗口与生命周期', link: '/guide/windows-lifecycle' },
+            { text: 'IPC 通信（补充）', link: '/guide/ipc' },
           ],
         },
         {

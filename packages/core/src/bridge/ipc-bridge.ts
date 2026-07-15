@@ -4,8 +4,20 @@ import type { DIContainer } from '../di/container'
 import type { ScannedModule } from '../module/scanner'
 import type { MiddlewarePipeline } from '../middleware/pipeline'
 
+/**
+ * 把 Controller 上的 `@IpcHandle` / `@IpcOn` 接到 Electron `ipcMain`。
+ *
+ * 扫描阶段只收集元数据；真正挂监听在这里：
+ *   1. resolve(Controller) —— 属性注入就绪
+ *   2. 拼 channel（可选 `prefix:channel`）
+ *   3. handle → ipcMain.handle（可返回值，走完整中间件管线）
+ *      on     → ipcMain.on（单向消息，只跑 Guard）
+ *
+ * Application.start 里在 WindowManager 之后调用 `registerAll()`。
+ */
 export class IpcBridge {
   private logger = new Logger('IpcBridge')
+  /** 已注册 channel，用于去重与 `unregisterAll` 时按名拆除 */
   private registeredChannels = new Set<string>()
 
   constructor(
@@ -14,6 +26,7 @@ export class IpcBridge {
     private pipeline: MiddlewarePipeline,
   ) {}
 
+  /** 遍历已扫描模块的 controllers，全部挂到 ipcMain */
   registerAll(): void {
     for (const mod of this.scannedModules) {
       for (const controllerClass of mod.controllers) {

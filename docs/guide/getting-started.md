@@ -103,5 +103,6 @@ pnpm docs:dev
 
 ## 下一步
 
-- 了解分包与装饰器：[核心概念](./concepts)
+- 了解 Controllers：[Controllers](./controllers)
+- 分包与装饰器约定：[核心概念](./concepts)
 - 对照完整示例：[示例项目](./examples)

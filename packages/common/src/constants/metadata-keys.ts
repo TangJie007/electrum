@@ -7,7 +7,7 @@ export const META = {
   MODULE: Symbol.for('electrum:module'),
   /** @Injectable — { isInjectable, scope } */
   INJECTABLE: Symbol.for('electrum:injectable'),
-  /** @Controller — { prefix } */
+  /** @Controller — { prefix, window? } */
   CONTROLLER: Symbol.for('electrum:controller'),
   /** @WindowDeclaration — 窗口配置 */
   WINDOW_DECLARATION: Symbol.for('electrum:window_declaration'),

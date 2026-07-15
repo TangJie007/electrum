@@ -16,8 +16,11 @@ export { Injectable } from './decorators/injectable.decorator'
 export type { InjectableOptions, Scope } from './decorators/injectable.decorator'
 
 export { Controller } from './decorators/controller.decorator'
+export type { ControllerOptions } from './decorators/controller.decorator'
 export { IpcHandle, IpcOn } from './decorators/ipc.decorator'
 export type { IpcHandlerEntry } from './decorators/ipc.decorator'
+export { IpcEmit } from './decorators/ipc-emit.decorator'
+export type { IpcEmitOptions } from './decorators/ipc-emit.decorator'
 
 export { AppEvent } from './decorators/app-event.decorator'
 export type { AppEventEntry } from './decorators/app-event.decorator'

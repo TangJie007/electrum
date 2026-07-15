@@ -16,14 +16,22 @@ interface ProviderRecord {
   scope: Scope
 }
 
+type WindowSender = (target: string, channel: string, ...args: any[]) => void
+
 export class DIContainer {
   private singletons = new Map<Token, any>()
   private providers = new Map<Token, ProviderRecord>()
   private resolving = new Set<Token>()
   private windowProvider: (name: string) => any | undefined = () => undefined
+  private windowSender: WindowSender = () => undefined
 
   setWindowProvider(fn: (name: string) => any | undefined): void {
     this.windowProvider = fn
+  }
+
+  /** ? @IpcEmit?target ????? `'broadcast'` */
+  setWindowSender(fn: WindowSender): void {
+    this.windowSender = fn
   }
 
   register(
@@ -65,7 +73,7 @@ export class DIContainer {
       throw new Error(
         `Circular dependency detected: ${this.formatToken(token)} ` +
           `is being resolved while already in chain: ` +
-          `[${[...this.resolving].map((t) => this.formatToken(t)).join(' â†?')}]`,
+          `[${[...this.resolving].map((t) => this.formatToken(t)).join(' ??')}]`,
       )
     }
 
@@ -94,6 +102,12 @@ export class DIContainer {
     try {
       const instance = new (targetClass as any)()
       const injections = readMetadata<InjectionPoint[]>(targetClass, META.INJECTIONS) || []
+      const controllerMeta = readMetadata<{ prefix?: string; window?: string }>(
+        targetClass,
+        META.CONTROLLER,
+      )
+      const prefix = controllerMeta?.prefix || ''
+      const controllerWindow = controllerMeta?.window
 
       for (const injection of injections) {
         if (injection.type === 'window') {
@@ -104,6 +118,13 @@ export class DIContainer {
             throw new Error(
               `Window "${injection.windowName}" not found for injection in ${targetClass.name}`,
             )
+          }
+        } else if (injection.type === 'emit') {
+          const channel = injection.emitChannel || ''
+          const fullChannel = prefix ? `${prefix}:${channel}` : channel
+          const target = injection.emitWindow ?? controllerWindow ?? 'main'
+          instance[injection.propertyKey] = (...args: any[]) => {
+            this.windowSender(target, fullChannel, ...args)
           }
         } else if (injection.type === 'optional') {
           if (this.has(injection.token)) {

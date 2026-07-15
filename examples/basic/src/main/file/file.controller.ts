@@ -2,22 +2,22 @@ import {
   Controller,
   IpcHandle,
   IpcOn,
+  IpcEmit,
   Inject,
-  WindowRef,
   UseInterceptors,
 } from '@electrum/common'
-import type { BrowserWindow, IpcMainEvent } from 'electron'
+import type { IpcMainEvent } from 'electron'
 import { FileService } from './file.service'
 import { LoggingInterceptor } from '../interceptors/logging.interceptor'
 
-@Controller('file')
+@Controller({ prefix: 'file', window: 'main' })
 @UseInterceptors(LoggingInterceptor)
 export class FileController {
   @Inject(FileService)
   fileService!: FileService
 
-  @WindowRef('main')
-  mainWindow!: BrowserWindow
+  @IpcEmit('saved')
+  notifySaved!: (path: string) => void
 
   @IpcHandle('read')
   async read(filePath: string): Promise<string> {
@@ -27,7 +27,7 @@ export class FileController {
   @IpcHandle('write')
   async write(data: { path: string; content: string }): Promise<{ ok: true; path: string }> {
     await this.fileService.write(data.path, data.content)
-    this.mainWindow.webContents.send('file:saved', data.path)
+    this.notifySaved(data.path)
     return { ok: true, path: data.path }
   }
 

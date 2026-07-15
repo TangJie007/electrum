@@ -1,63 +1,22 @@
-# IPC 通信
+# IPC 通信（补充）
 
-把 Controller 方法映射到 `ipcMain.handle` / `ipcMain.on`，通道名由前缀 + 方法 channel 组成。
+日常用法请先阅读 [Controllers](./controllers)：通道前缀、`@IpcHandle` / `@IpcOn`、模块注册与返回值都在该章说明。
 
-## Controller + Handle
-
-```ts
-import { Controller, IpcHandle, Inject } from '@electrum/common'
-import { UserService, type User } from './user.service'
-
-@Controller('user')
-export class UserController {
-  @Inject(UserService)
-  users!: UserService
-
-  @IpcHandle('list')
-  list(): User[] {
-    return this.users.list()
-  }
-
-  @IpcHandle('get')
-  get(id: number): User {
-    return this.users.get(id)
-  }
-}
-```
-
-## 通道命名
-
-```
-fullChannel = prefix ? `${prefix}:${channel}` : channel
-```
-
-上例：`user:list`、`user:get`。  
-渲染进程通常：`window.api.invoke('user:list')`。
-
-## `@IpcHandle` vs `@IpcOn`
-
-| 装饰器 | Electron API | 中间件 | 方法参数 |
-|--------|--------------|--------|----------|
-| `@IpcHandle` | `ipcMain.handle` | 完整管道（Guard → Pipe → Interceptor → Filter） | `(...args)`，不含 event |
-| `@IpcOn` | `ipcMain.on` | 仅 Guard | `(event, ...args)` |
-
-`@IpcHandle({ channel, devOnly: true })`：非开发环境跳过注册。
-
-重复通道会警告并跳过，避免二次 `handle` 崩溃。
+本页仅补充启动时序与类型生成入口。
 
 ## 启动时序
 
-`createApp(AppModule).start()` 内部会在扫描完成后把各 Controller 实例交给 IpcBridge 注册。业务侧只需保证模块里声明了对应 `controllers`。
+`createApp(AppModule).start()` 内部在**窗口初始化之后**，由 `IpcBridge` resolve 各 Controller 并绑定 `ipcMain`。业务侧只需在模块的 `controllers` 中声明类即可。
 
-## 类型骨架（可选）
+为何在创窗之后？Controller 上可能有 `@WindowRef`；若先 resolve 再创窗，注入会失败。详见 [架构总览](/core/architecture)。
 
-可扫描全部 `@IpcHandle` 生成渲染侧声明骨架：
+## 类型骨架
 
 ```ts
 createApp(AppModule).generateTypes('src/renderer/types/api.d.ts')
 ```
 
-当前生成为通道名 → `any` 的骨架，方便起步；精细参数类型可后续手工收紧。详见 [类型生成与插件](/core/types-and-plugins)。
+实现细节见 [类型生成与插件](/core/types-and-plugins)。管道行为见 [中间件](./middleware) 与 [IPC 与中间件](/core/ipc-and-middleware)。
 
 ## 下一步
 

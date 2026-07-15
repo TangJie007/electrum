@@ -10,8 +10,8 @@ hero:
       text: 快速开始
       link: /guide/getting-started
     - theme: alt
-      text: 核心概念
-      link: /guide/concepts
+      text: Controllers
+      link: /guide/controllers
     - theme: alt
       text: 深入源码
       link: /core/

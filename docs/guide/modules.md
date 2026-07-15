@@ -1,8 +1,6 @@
-# 模块系统
+# 模块
 
-`@Module` 是应用组织边界：声明本模块提供哪些 Controller / Provider，以及依赖哪些子模块、窗口声明。
-
-## 基本写法
+模块是组织应用结构的基本单元。每个应用至少有一个**根模块**（传给 `createApp` 的那个）。一个模块用 `@Module()` 描述：本模块有哪些 Controllers / Providers，依赖哪些子模块，以及窗口声明。
 
 ```ts
 import { Module } from '@electrum/common'
@@ -18,7 +16,7 @@ import { FileModule } from '../file/file.module'
 export class UserModule {}
 ```
 
-根模块再被 `createApp(AppModule)` 接收：
+根模块再被 `createApp` 接收：
 
 ```ts
 @Module({
@@ -27,6 +25,8 @@ export class UserModule {}
   providers: [ConfigService],
 })
 export class AppModule {}
+
+await createApp(AppModule).start()
 ```
 
 ## 元数据字段
@@ -34,43 +34,19 @@ export class AppModule {}
 | 字段 | 含义 |
 |------|------|
 | `imports` | 先扫描的子模块（DFS：先 imports 再自身） |
-| `controllers` | IPC 入口类，会注册进 DI 并用 IpcBridge 绑定 |
+| `controllers` | IPC 入口类，会注册进 DI 并由 IpcBridge 绑定 |
 | `providers` | 可注入服务；支持 class / `useClass` / `useValue` / `useFactory` |
 | `declarations` | 窗口声明类（配合 `@WindowDeclaration`） |
 
-## Provider 几种形式
+## 功能拆分
 
-```ts
-@Module({
-  providers: [
-    // 简写：token = 类本身
-    ConfigService,
+建议按领域拆模块（如 `FileModule`、`UserModule`），根模块只负责组装。可以从单个 Controller + 单个 Module 起步，再逐步拆分。
 
-    // 令牌 + 工厂
-    {
-      provide: 'APP_CONFIG',
-      useFactory: () => ({
-        appName: 'Electrum Demo',
-        version: '0.1.0',
-      }),
-    },
-  ],
-})
-export class AppModule {}
-```
-
-注入自定义 token：
-
-```ts
-@Inject('APP_CONFIG')
-config!: { appName: string; version: string }
-```
-
-## 扫描顺序（使用时需要知道）
+## 扫描顺序
 
 1. 根模块递归 `imports`
 2. 每个模块的 providers / controllers 登记到容器
-3. 后续再创建窗口、绑定 IPC、触发生命周期
+3. 再创建窗口、绑定 IPC、触发生命周期
 
 同一模块树只会扫描一次（visited 防环）。未标注 `@Module` 的类作为根模块会在扫描时报错。
 
@@ -78,4 +54,4 @@ config!: { appName: string; version: string }
 
 ## 下一步
 
-→ [依赖注入](./dependency-injection)
+→ [中间件](./middleware)

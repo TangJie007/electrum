@@ -63,7 +63,7 @@ async function onRead() {
   try {
     const text = (await window.api.invoke('file:read', path.value)) as string
     content.value = text
-    setStatus('读取成功')
+    setStatus('读取成功'  + text)
   } catch (err: any) {
     setStatus(`${err.code || 'ERROR'}: ${err.message}`, false)
   }

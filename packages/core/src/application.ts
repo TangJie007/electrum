@@ -124,8 +124,12 @@ export class Application {
     // 2. 等待 Electron 主进程就绪
     await electronApp.whenReady()
 
-    // 3. 创建声明式窗口，并 setWindowProvider，供后续 @WindowRef 注入
+    // 3. 创建声明式窗口，并 setWindowProvider / setWindowSender，供 @WindowRef / @IpcEmit
     await this.windowManager.initialize(this.scannedModules)
+    this.container.setWindowSender((target, channel, ...args) => {
+      if (target === 'broadcast') this.windowManager.broadcast(channel, ...args)
+      else this.windowManager.sendTo(target, channel, ...args)
+    })
 
     // 4. 解析各 Controller，按 prefix:channel 绑定 ipcMain.handle / on
     this.ipcBridge = new IpcBridge(this.container, this.scannedModules, this.pipeline)
@@ -167,7 +171,6 @@ export class Application {
 
 /**
  * 创建 Application 实例（尚未启动）。
- * 等价于 Nest 的 NestFactory.create，传输层换成 Electron IPC。
  */
 export function createApp(rootModule: Function): Application {
   return new Application(rootModule)

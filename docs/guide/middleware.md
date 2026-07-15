@@ -1,6 +1,8 @@
 # 中间件
 
-一次 `@IpcHandle` 调用会走管道：
+Controller 上的 `@IpcHandle` 在真正执行业务方法前，会经过一层 NestJS 风格管道（详见 [Controllers](./controllers)）。
+
+一次 `@IpcHandle` 调用会走：
 
 ```
 Guards → Pipes → Interceptors →（业务方法）→ Filters（仅捕获错误时）
