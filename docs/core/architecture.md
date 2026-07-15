@@ -5,7 +5,7 @@
 ```
 packages/core/src/
 ├── index.ts                 # 对外导出 + re-export common
-├── application.ts           # 编排入口：createApp / start / reload
+├── application.ts           # 编排入口：createApp / start
 ├── di/container.ts          # 依赖注入容器（属性注入）
 ├── module/scanner.ts        # 递归扫描 @Module 树，注册 Provider
 ├── bridge/
@@ -83,7 +83,6 @@ Controller 上可能有 `@WindowRef`。若先 `resolve(Controller)` 再创窗，
 | `resolve(token)` | 透传 DI |
 | `getWindowManager()` / `getContainer()` | 拿内部组件 |
 | `generateTypes(path)` | 扫通道写 `.d.ts` |
-| `reload()` | HMR 用：卸 IPC、清容器、重扫重绑 |
 
 ## 5. 和 NestJS 的对应关系
 

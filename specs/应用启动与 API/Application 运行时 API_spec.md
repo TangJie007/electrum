@@ -10,7 +10,7 @@
 
 ## 功能描述
 
-提供 use/useGlobal*/generateTypes/reload/resolve/getWindowManager 等公共方法
+提供 use/useGlobal*/generateTypes/resolve/getWindowManager 等公共方法
 
 ---
 

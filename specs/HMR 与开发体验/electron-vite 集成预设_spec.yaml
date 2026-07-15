@@ -1,26 +1,33 @@
 # Spec 文件: electron-vite 集成预设
 # 模块: HMR 与开发体验
 # 生成时间: 2026-07-14
-# 版本: 1.0.0
+# 版本: 1.1.0
 
 spec:
   id: "HMR 与开发体验-electron-vite 集成预设"
   name: "electron-vite 集成预设"
   module: "HMR 与开发体验"
-  description: "提供与 electron-vite 开箱集成的开发预设（路线图 v0.5）"
+  description: "electron-vite 开发预设；主进程变更用 --watch 整进程重启，不做进程内软重载"
   status: "draft"
   priority: "low"
   tags: []
   acceptance:
-  - "文档或包中存在可用的 electron-vite 集成方式"
+  - "文档或包中存在可用的 electron-vite 集成方式（含 --watch）"
   - "示例 basic 可在开发模式启动并联调"
+  - "修改 main 下业务文件后，dev 进程会重建并重启 Electron"
   dependencies: []
-  notes: ""
+  notes: "对齐 NestJS 默认 DX：nest start --watch 亦为整进程重启。已移除 Controller 进程内 HMR 需求。"
   changelog:
     - date: "2026-07-14"
       author: "AI"
       summary: "初始版本，由 PRD 解析生成"
       changes:
         - "全量生成"
-  version: "1.0.0"
-  updated_at: "2026-07-14"
+    - date: "2026-07-15"
+      author: "AI"
+      summary: "明确 DX 策略为 --watch 整进程重启"
+      changes:
+        - "移除进程内 HMR 需求"
+        - "验收标准补充 --watch"
+  version: "1.1.0"
+  updated_at: "2026-07-15"

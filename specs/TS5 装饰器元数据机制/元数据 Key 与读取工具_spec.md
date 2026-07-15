@@ -18,7 +18,7 @@
 
 - [ ] META 常量覆盖文档列出的类/方法/属性/中间件 key
 - [ ] 读写均经由 Class[Symbol.metadata]，不依赖 reflect-metadata
-- [ ] HMR 重载后 Symbol.for key 仍一致可读取
+- [ ] 跨包 / 重复加载模块时 Symbol.for key 仍一致可读取
 
 ---
 

@@ -119,6 +119,8 @@ export class Application {
     const scanner = new ModuleScanner(this.container)
     this.scannedModules = scanner.scan(this.rootModule)
 
+    // console.log('scannedModules', this.scannedModules)
+
     // 2. 等待 Electron 主进程就绪
     await electronApp.whenReady()
 
@@ -151,29 +153,6 @@ export class Application {
     this.started = true
     this.logger.log('Application started')
     return this
-  }
-
-  /**
-   * 热重载用：卸掉旧 IPC、清空容器、重新扫描并注册。
-   * （完整文件监视器不在本类，由外部调用本方法。）
-   */
-  async reload(): Promise<void> {
-    this.ipcBridge?.unregisterAll()
-    this.container.clear()
-
-    const scanner = new ModuleScanner(this.container)
-    this.scannedModules = scanner.scan(this.rootModule)
-
-    await this.windowManager.initialize(this.scannedModules)
-
-    this.ipcBridge = new IpcBridge(this.container, this.scannedModules, this.pipeline)
-    this.ipcBridge.registerAll()
-
-    this.lifecycle = new LifecycleManager(this.container, this.scannedModules)
-    await this.lifecycle.runHook('onModuleInit')
-    await this.lifecycle.runHook('onAppReady')
-
-    this.logger.log('Application reloaded')
   }
 
   /** 应用退出清理 */

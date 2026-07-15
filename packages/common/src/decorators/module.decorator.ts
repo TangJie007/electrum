@@ -33,8 +33,14 @@ export interface ModuleMetadata {
   declarations?: Function[]
 }
 
+/**
+ * 类装饰器：把模块元数据写入 `Symbol.metadata`，供 ModuleScanner 读取。
+ * 不执行注册逻辑，只声明 imports / controllers / providers / declarations。
+ */
 export function Module(metadata: ModuleMetadata) {
   return (_target: Function, context: ClassDecoratorContext): void => {
+    // Stage 3：写入 context.metadata，类定义完成后可经 Symbol.metadata 读出
     context.metadata![META.MODULE] = metadata
+    console.log('Module', metadata)
   }
 }

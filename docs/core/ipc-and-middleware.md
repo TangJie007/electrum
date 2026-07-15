@@ -34,7 +34,7 @@ fullChannel = prefix ? `${prefix}:${channel}` : channel
 
 重复通道：`warn` 后 skip，避免二次 `handle` 炸掉。
 
-`unregisterAll`：对已登记通道 `removeHandler` + `removeAllListeners`（供 reload / quit）。
+`unregisterAll`：对已登记通道 `removeHandler` + `removeAllListeners`（供 quit / shutdown）。
 
 ## 2. MiddlewarePipeline：一次 invoke 的路径
 

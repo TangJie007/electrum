@@ -24,7 +24,7 @@ specs/ 需求分片
 | Spec 模块 | 功能 Spec | 源码位置 | 完成度 | 说明 |
 |-----------|-----------|----------|--------|------|
 | 应用启动与 API | createApp 启动编排 | `application.ts` | ✅ 基本有 | `start()` 串联扫描→窗→IPC→钩子 |
-| 应用启动与 API | Application 运行时 API | `application.ts` | ✅ 基本有 | `use` / `useGlobal*` / `resolve` / `reload` 等 |
+| 应用启动与 API | Application 运行时 API | `application.ts` | ✅ 基本有 | `use` / `useGlobal*` / `resolve` / `generateTypes` 等 |
 | 依赖注入容器 | 属性注入解析 | `di/container.ts` | ✅ 基本有 | `new` + 读 `META.INJECTIONS` |
 | 依赖注入容器 | 作用域与循环依赖检测 | `di/container.ts` | ✅ 基本有 | singleton / transient + resolving 链 |
 | 模块系统 | ModuleScanner 模块树扫描 | `module/scanner.ts` | ✅ 基本有 | DFS imports，注册 Provider |
@@ -42,13 +42,12 @@ specs/ 需求分片
 | 类型生成 | ts-morph 精确类型与 Preload 生成 | — | ❌ 未做 | 路线图 v0.4 |
 | 插件系统 | Plugin 接口与安装生命周期 | `plugin/` + `use()` | ⚠️ 接口有 | `install` / `ready` / `destroy` |
 | 插件系统 | 官方插件包命名预留 | — | ❌ 仅预留 | `@electrum/plugin-*` |
-| HMR 与开发体验 | Controller HMR 热重载 | `application.reload` | ⚠️ 半成品 | 有 reload，无完整文件监视 |
-| HMR 与开发体验 | electron-vite 集成预设 | 示例配置 | ⚠️ 非框架包 | 见 `examples/basic` |
+| HMR 与开发体验 | electron-vite 集成预设 | 示例配置 | ⚠️ 非框架包 | `examples/basic`：`electron-vite dev --watch` 整进程重启 |
 
 ### Core 源码 ↔ Spec 速查
 
 ```
-application.ts          → 应用启动与 API、生命周期时序、HMR.reload、插件编排
+application.ts          → 应用启动与 API、生命周期时序、插件编排
 di/container.ts         → 依赖注入容器
 module/scanner.ts       → 模块系统
 bridge/ipc-bridge.ts    → IPC 桥接
@@ -88,7 +87,7 @@ Core **依赖并读取** common 的元数据，但不「实现」装饰器本身
 5. 中间件链  
 6. 窗口 + 事件 + 生命周期  
 
-后续再补：类型生成精确化、HMR、官方插件。
+后续再补：类型生成精确化、官方插件。
 
 相关文档：
 

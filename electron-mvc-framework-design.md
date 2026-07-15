@@ -66,7 +66,7 @@ NestJS 在 Node.js 服务端领域已证明了 **装饰器 + DI + 模块化 + MV
 | **低侵入** | 不封装 Electron API，不改变 Electron 原有心智模型，装饰器是可选的增强层 |
 | **可测试** | Service 层可完全脱离 Electron 运行时进行单元测试 |
 | **渐进式** | 可从单个 Controller 开始逐步引入，不需要一次性重构 |
-| **开箱即用** | 内置 electron-vite 集成、HMR、多窗口管理、自动更新等常用能力 |
+| **开箱即用** | 内置 electron-vite 集成（`--watch`）、多窗口管理、自动更新等常用能力 |
 | **TS5 原生装饰器** | 使用 TypeScript 5 Stage 3 装饰器标准，不依赖 `experimentalDecorators` 和 `reflect-metadata` |
 
 ### 1.3 与现有方案的定位
@@ -75,7 +75,7 @@ NestJS 在 Node.js 服务端领域已证明了 **装饰器 + DI + 模块化 + MV
 |---|---|---|
 | **einf** | 极简装饰器框架，无 Module 系统 | 本框架有完整模块化系统 + 生命周期 |
 | **noxus** | HTTP 风格路由 + Guard，偏 NestJS 全功能 | 本框架更贴近 Electron 原生 IPC 模型，不强制 HTTP 风格 |
-| **@electrojs/runtime** | 完整生命周期 + 模块图 | 本框架增加了渲染进程类型安全生成和 HMR |
+| **@electrojs/runtime** | 完整生命周期 + 模块图 | 本框架增加了渲染进程类型安全生成与 `--watch` 开发体验 |
 | **@devisfuture/electron-modular** | Provider Pattern 解耦 | 本框架增加 Guard/Interceptor/Pipe/Filter 中间件链 |
 
 **核心差异化**：
@@ -84,7 +84,7 @@ NestJS 在 Node.js 服务端领域已证明了 **装饰器 + DI + 模块化 + MV
 3. 渲染进程侧自动类型生成（`api.d.ts`），全链路类型安全
 4. 四层中间件链（Guard → Pipe → Controller → Interceptor → Filter），与 NestJS 心智模型一致
 5. 声明式多窗口管理（`@WindowDeclaration` 装饰器 + 配置驱动）
-6. 内置 HMR 热重载（开发模式下 Controller 修改自动重新注册 IPC）
+6. 开发期主进程热更新：`electron-vite dev --watch` **整进程重启**（对齐 Nest `nest start --watch`，不做进程内软重载）
 7. 不封装 Electron API，原生 `BrowserWindow`/`app`/`Menu` 等照常使用
 
 ---
@@ -101,7 +101,7 @@ NestJS 在 Node.js 服务端领域已证明了 **装饰器 + DI + 模块化 + MV
 2. **装饰器即声明** — 用 TS5 原生装饰器声明意图（这是 Controller、这是 IPC 处理器、这是可注入的），框架负责编排
 3. **DI 是手段不是目的** — 依赖注入解决的是"谁创建谁"的问题，不为了 DI 而 DI
 4. **中间件链可插拔** — Guard/Pipe/Interceptor/Filter 都是可选的，不用就不执行，零开销
-5. **开发体验优先** — 类型提示、错误信息、HMR、调试工具，开发时的舒适度等同于运行时性能
+5. **开发体验优先** — 类型提示、错误信息、`--watch` 整进程重启、调试工具，开发时的舒适度等同于运行时性能
 6. **面向标准** — 使用 TC39 Stage 3 装饰器标准 + `Symbol.metadata`，不依赖实验性特性
 
 ### 架构哲学
@@ -243,7 +243,7 @@ export const METADATA_READY = true
 
 #### 4.0.4 元数据 Key 定义
 
-使用 `Symbol.for()` 创建全局唯一的 key，确保 HMR 重新加载模块时元数据 key 一致：
+使用 `Symbol.for()` 创建全局唯一的 key，确保跨包 / 重复加载模块时元数据 key 一致：
 
 ```typescript
 // packages/common/src/constants/metadata-keys.ts
@@ -1860,36 +1860,17 @@ export interface Plugin {
 }
 ```
 
-### 5.7 HMR 热重载
+### 5.7 开发热更新（整进程重启）
 
-```typescript
-// src/core/hmr/hot-reload.ts
+**不做**框架内进程内软重载（无文件监视 + `app.reload` + 清 `require.cache`）。
 
-import { watch } from 'chokidar'
-import type { Application } from '../application'
-import { Logger } from '../logger/logger'
+主进程 / preload 变更统一依赖 electron-vite：
 
-export class HotReload {
-  private logger = new Logger('HMR')
-
-  constructor(private app: Application, private watchPaths: string[]) {}
-
-  start(): void {
-    const watcher = watch(this.watchPaths, { ignoreInitial: true })
-
-    watcher.on('change', async (filePath) => {
-      this.logger.log(`File changed: ${filePath}, reloading...`)
-      try {
-        delete require.cache[require.resolve(filePath)]
-        await this.app.reload()
-        this.logger.log('Reload complete')
-      } catch (err: any) {
-        this.logger.error(`Reload failed: ${err.message}`)
-      }
-    })
-  }
-}
+```bash
+electron-vite dev --watch
 ```
+
+行为与 NestJS 默认 DX 一致：文件变更 → 重建 → **重启进程**。渲染进程仍使用 Vite HMR。
 
 ---
 
@@ -2141,7 +2122,6 @@ app.useGlobalGuards(...)       // 注册全局 Guard
 app.useGlobalPipes(...)        // 注册全局 Pipe
 app.useGlobalInterceptors(...) // 注册全局 Interceptor
 app.generateTypes(path)        // 生成类型声明文件
-app.reload()                   // HMR 重新加载
 app.resolve(token)             // 手动解析依赖
 app.getWindowManager()         // 获取窗口管理器
 ```
@@ -2237,8 +2217,6 @@ electrum/
 │   │   │   │   └── logger.ts
 │   │   │   ├── type-generator/
 │   │   │   │   └── generator.ts
-│   │   │   ├── hmr/
-│   │   │   │   └── hot-reload.ts
 │   │   │   └── index.ts
 │   │   ├── package.json                    # name: "@electrum/core"
 │   │   └── tsconfig.json
@@ -2610,8 +2588,7 @@ describe('TS5 Decorator Metadata', () => {
 
 ### v0.5.0 — 开发体验
 
-- [ ] HMR 热重载
-- [ ] electron-vite 集成预设
+- [ ] electron-vite 集成预设（`dev --watch` 整进程重启）
 - [ ] `@electrum/testing` 测试工具包
 - [ ] `@electrum/cli` 脚手架
 
@@ -2646,7 +2623,7 @@ describe('TS5 Decorator Metadata', () => {
 | **生命周期** | 3 钩子 | ❌ | 1 个 | 5 个 | 有 |
 | **窗口管理** | 声明式 + 属性注入 | @Window() | 服务 | 声明式 | @WindowManager |
 | **类型生成** | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **HMR** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **开发热更新** | `--watch` 重启 | ❌ | ❌ | ❌ | ❌ |
 | **体积** | <50KB | <10KB | 中 | 大 | 中 |
 
 ---

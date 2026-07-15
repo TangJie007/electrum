@@ -7,7 +7,7 @@ spec:
   id: "应用启动与 API-Application 运行时 API"
   name: "Application 运行时 API"
   module: "应用启动与 API"
-  description: "提供 use/useGlobal*/generateTypes/reload/resolve/getWindowManager 等公共方法"
+  description: "提供 use/useGlobal*/generateTypes/resolve/getWindowManager 等公共方法"
   status: "draft"
   priority: "high"
   tags: []

@@ -371,7 +371,7 @@
         {
           "id": "APP-002",
           "name": "Application 运行时 API",
-          "description": "提供 use/useGlobal*/generateTypes/reload/resolve/getWindowManager 等公共方法",
+          "description": "提供 use/useGlobal*/generateTypes/resolve/getWindowManager 等公共方法",
           "priority": "high",
           "acceptance": [
             "app.resolve(token) 返回 DI 实例",
@@ -385,24 +385,14 @@
       "name": "HMR 与开发体验",
       "features": [
         {
-          "id": "DX-001",
-          "name": "Controller HMR 热重载",
-          "description": "开发态监视路径变更后清 require.cache 并 app.reload，重新注册 IPC",
-          "priority": "low",
-          "acceptance": [
-            "文件变更触发 reload",
-            "reload 成功后新 Handler 生效",
-            "失败时记录错误且进程不崩溃"
-          ]
-        },
-        {
           "id": "DX-002",
           "name": "electron-vite 集成预设",
-          "description": "提供与 electron-vite 开箱集成的开发预设（路线图 v0.5）",
+          "description": "electron-vite 开发预设；主进程变更用 --watch 整进程重启，不做进程内软重载",
           "priority": "low",
           "acceptance": [
-            "文档或包中存在可用的 electron-vite 集成方式",
-            "示例 basic 可在开发模式启动并联调"
+            "文档或包中存在可用的 electron-vite 集成方式（含 --watch）",
+            "示例 basic 可在开发模式启动并联调",
+            "修改 main 下业务文件后，dev 进程会重建并重启 Electron"
           ]
         }
       ]

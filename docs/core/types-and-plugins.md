@@ -80,7 +80,7 @@ app.use({
 2. `IpcHandle` 与 `IpcOn` 中间件路径差在哪？  
 3. DI 为什么是 `new()` 后再读 `META.INJECTIONS`？  
 4. Filter 返回值为什么要带 `__error`？  
-5. `reload()` 清了什么、又重新做了什么？
+5. 开发态主进程改代码靠什么生效？（`--watch` 整进程重启）
 
 对照自测：在 `examples/basic` 打断点跟一遍 `createApp(...).start()`。
 

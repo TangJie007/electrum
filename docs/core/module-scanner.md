@@ -95,8 +95,7 @@ Controller 上常有 `@Inject` / `@WindowRef`。
 ## 7. 已知限制（读 Spec / 后续演进）
 
 - **全局 DI**：所有模块的 Provider 注册到**同一个**容器，注册后全局可注入（无模块级可见性边界）。  
-- **环依赖模块**：靠 `visited` 跳过，不会二次注册；业务环依赖实例化仍由 `DIContainer` 检测。  
-- Scanner **可重复 scan**：`Application.reload` 会 `container.clear()` 后新建 Scanner，避免脏状态。
+- **环依赖模块**：靠 `visited` 跳过，不会二次注册；业务环依赖实例化仍由 `DIContainer` 检测。
 
 ## 8. 对照阅读
 

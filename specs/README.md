@@ -1,14 +1,14 @@
 # Spec 目录
 
-> 由 wetspec 管理 | 功能总数：33  
+> 由 wetspec 管理 | 功能总数：32  
 > 来源 PRD：待补充  
-> 最后索引更新：2026-07-14
+> 最后索引更新：2026-07-15
 
 ## 模块概览
 
 | 模块 | 功能数 | 功能 |
 |------|--------|------|
-| [HMR 与开发体验](./HMR 与开发体验/INDEX.md) | 2 | Controller HMR 热重载、electron-vite 集成预设 |
+| [HMR 与开发体验](./HMR 与开发体验/INDEX.md) | 1 | electron-vite 集成预设（`--watch` 整进程重启） |
 | [IPC 桥接](./IPC 桥接/INDEX.md) | 2 | Controller 自动绑定 ipcMain、IPC 参数位置约定 |
 | [TS5 装饰器元数据机制](./TS5 装饰器元数据机制/INDEX.md) | 2 | Symbol.metadata Polyfill、元数据 Key 与读取工具 |
 | [中间件链](./中间件链/INDEX.md) | 2 | Guard Pipe Interceptor Filter 管道、中间件装饰器与全局注册 |
