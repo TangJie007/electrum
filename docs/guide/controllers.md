@@ -275,7 +275,7 @@ export class FileController {
 }
 ```
 
-详见 [中间件](./middleware)。
+详见 [中间件管道](./middleware)：[Guard](./guards) · [Pipe](./pipes) · [Interceptor](./interceptors) · [Filter](./filters)。
 
 ## 类型骨架（可选）
 

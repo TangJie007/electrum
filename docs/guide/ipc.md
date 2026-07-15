@@ -16,7 +16,7 @@
 createApp(AppModule).generateTypes('src/renderer/types/api.d.ts')
 ```
 
-实现细节见 [类型生成与插件](/core/types-and-plugins)。管道行为见 [中间件](./middleware) 与 [IPC 与中间件](/core/ipc-and-middleware)。
+实现细节见 [类型生成与插件](/core/types-and-plugins)。管道行为见 [中间件管道](./middleware)（[Guard](./guards) / [Pipe](./pipes) / [Interceptor](./interceptors) / [Filter](./filters)）与 [IPC 与中间件](/core/ipc-and-middleware)。
 
 ## 渲染侧调用
 

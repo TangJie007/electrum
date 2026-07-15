@@ -28,7 +28,7 @@
 - 属性注入 `@Inject` / `@WindowRef` / `@Optional`
 - DI 容器、模块扫描、IPC / Event 桥接
 - 声明式窗口 `@WindowDeclaration`
-- 中间件链（Guard / Pipe / Interceptor / Filter）
+- 中间件链（[Guard](./guards) / [Pipe](./pipes) / [Interceptor](./interceptors) / [Filter](./filters)，总览 [中间件管道](./middleware)）
 - 生命周期钩子、日志、异常类型
 - IPC 通道类型骨架生成（`generateTypes`）
 - 渲染侧：`@electrum/preload` / `@electrum/client`（见 [Preload](./preload)、[Client](./client)）

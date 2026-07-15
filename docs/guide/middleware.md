@@ -1,4 +1,4 @@
-# 中间件
+# 中间件管道
 
 Controller 上的 `@IpcHandle` 在真正执行业务方法前，会经过一层 NestJS 风格管道（详见 [Controllers](./controllers)）。
 
@@ -8,8 +8,30 @@ Controller 上的 `@IpcHandle` 在真正执行业务方法前，会经过一层 
 Guards → Pipes → Interceptors →（业务方法）→ Filters（仅捕获错误时）
 ```
 
-装饰器：`@UseGuards` / `@UsePipes` / `@UseInterceptors` / `@UseFilters`。  
-合并顺序：**global → class → method**。
+四类角色职责不同，但都通过同一套挂载方式接入：  
+`@UseGuards` / `@UsePipes` / `@UseInterceptors` / `@UseFilters`，以及 `app.useGlobal*`。  
+合并顺序：**global → class → method**（Filter 执行时优先更具体的，见 [Filter](./filters)）。
+
+::: warning 和 NestJS「Middleware」不是一回事
+NestJS 里有两类概念，名字容易混：
+
+| NestJS | Electrum |
+|--------|----------|
+| **Middleware**（`NestMiddleware` / `MiddlewareConsumer.apply()`，类似 Express `(req,res,next)`） | **未实现** |
+| **Guards / Pipes / Interceptors / Exception Filters** | **已实现**，文档统称「中间件管道」 |
+
+Electrum 面向的是 Electron **IPC 调用**，没有 HTTP `req`/`res`，因此不引入 Express 式中间件；跨切面能力用 Guard / Pipe / Interceptor / Filter 覆盖。  
+若需要「所有通道最外层统一预处理」，可用 **全局 Guard 或全局 Interceptor** 近似替代 Nest Middleware 的常见用法。
+:::
+
+## 怎么选
+
+| 需求 | 文档 |
+|------|------|
+| 能不能调用这条 IPC | [Guard](./guards) |
+| 参数怎么变成合法形状 | [Pipe](./pipes) |
+| 调用前后打点、计时、改返回值 | [Interceptor](./interceptors) |
+| 异常怎么结构化回给渲染进程 | [Filter](./filters) |
 
 ## 全局注册
 
@@ -24,63 +46,18 @@ import { GlobalExceptionFilter } from './filters/global-exception.filter'
 const app = createApp(AppModule)
 app.useGlobalInterceptors(LoggingInterceptor)
 app.useGlobalFilters(GlobalExceptionFilter)
+// app.useGlobalGuards(...)
+// app.useGlobalPipes(...)
 await app.start()
 ```
 
-## Guard
-
-任一 `canActivate` 返回 `false` → 抛 `ForbiddenException`。
-
-```ts
-import { Injectable, UseGuards } from '@electrum/common'
-import type { CanActivate, IpcContext } from '@electrum/common'
-
-@Injectable()
-export class AuthGuard implements CanActivate {
-  canActivate(ctx: IpcContext): boolean {
-    return true // 按业务校验
-  }
-}
-
-@UseGuards(AuthGuard)
-@Controller('secure')
-export class SecureController {
-  // ...
-}
-```
-
-## Pipe
-
-按 global → class → method 依次 `transform`，通常作用于第一个业务参数。
-
-## Interceptor
-
-可包裹调用前后逻辑（日志、计时等）。示例见 `examples/basic` 的 `LoggingInterceptor`。
-
-## Filter
-
-捕获管道中的异常，转成结构化 `IpcErrorResponse`（含 `__error: true`），避免未捕获异常直接冒泡到 Electron。
-
-```ts
-@Injectable()
-export class GlobalExceptionFilter implements ExceptionFilter {
-  catch(exception: unknown, _context: IpcContext): IpcErrorResponse {
-    if (exception instanceof ElectronException) {
-      return exception.toJSON()
-    }
-    // ...
-  }
-}
-```
-
-内置异常：`ElectronException`、`NotFoundException`、`ForbiddenException`、`ValidationException`。
-
 ## `@IpcOn` 注意
 
-事件监听只跑 **Guard**，不跑完整 Pipe / Interceptor / Filter 链。
+事件监听**只跑 Guard**，不跑 Pipe / Interceptor / Filter。详见 [Guard · `@IpcOn` 准入](./guards#5-ipcon-订阅准入)。
 
-更多实现细节见 [IPC 与中间件](/core/ipc-and-middleware)。
+实现细节见 [IPC 与中间件](/core/ipc-and-middleware)。
 
 ## 下一步
 
+→ [Guard](./guards) · [Pipe](./pipes) · [Interceptor](./interceptors) · [Filter](./filters)  
 → [窗口与生命周期](./windows-lifecycle)

@@ -1,26 +1,35 @@
-# Electrum 文档源码
+# Electrum docs (VitePress)
 
-本目录是 **VitePress** 站点根目录。
+This directory is the **VitePress** site root.
 
-## 本地预览
+## Local preview
 
 ```bash
-# 仓库根目录
-pnpm docs:dev      # 开发服务器
-pnpm docs:build    # 构建静态站
-pnpm docs:preview  # 预览构建结果
+# repo root
+pnpm docs:dev      # dev server
+pnpm docs:build    # static build
+pnpm docs:preview  # preview build
 ```
 
-## 目录
+## Languages (i18n)
 
-| 路径 | 说明 |
-|------|------|
-| `index.md` | 站点首页 |
-| `guide/` | 使用指南（概述 → Controllers → Providers → 模块 → Preload / Client…） |
-| `guide/preload.md` | `@electrum/preload` |
-| `guide/client.md` | `@electrum/client` |
-| `core/` | `@electrum/core` 实现学习（深入源码） |
-| `.vitepress/` | VitePress 配置 |
+| Locale | URL | Content |
+|--------|-----|---------|
+| 简体中文（默认） | `/` | Root: `index.md`, `guide/`, `core/` |
+| English | `/en/` | Mirror: `en/index.md`, `en/guide/`, `en/core/` |
 
-设计总方案见仓库根目录 `electron-mvc-framework-design.md`。  
-需求 Spec 目录：`specs/`。
+Config lives in `.vitepress/config/` (`shared` + `zh` + `en`). The nav language switcher is built into VitePress.
+
+When adding or changing a page, update **both** locales (Chinese source + English under `en/`).
+
+## Layout
+
+| Path | Description |
+|------|-------------|
+| `index.md` / `en/index.md` | Home |
+| `guide/` / `en/guide/` | User guide |
+| `core/` / `en/core/` | `@electrum/core` deep dive |
+| `.vitepress/` | VitePress config |
+
+Design overview: repo root `electron-mvc-framework-design.md`.  
+Specs: `specs/`.

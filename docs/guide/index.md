@@ -15,7 +15,7 @@ Electrum 提供开箱即用的应用结构，灵感来自 NestJS / Angular：
 | **Controller** | 处理来自渲染进程的 IPC 调用 |
 | **Provider / Service** | 可注入的业务逻辑与工具 |
 | **Module** | 把 Controllers、Providers、窗口声明组织在一起 |
-| **中间件管道** | Guard → Pipe → Interceptor → Filter |
+| **中间件管道** | [Guard](./guards) → [Pipe](./pipes) → [Interceptor](./interceptors) → [Filter](./filters) |
 
 你可以从单个 Controller 开始接入，不必一次重写整个主进程。
 

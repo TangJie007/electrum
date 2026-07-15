@@ -55,6 +55,15 @@ catch:
 
 任一 `canActivate` 返回 `false` → 抛 `ForbiddenException`。
 
+使用场景与写法见使用指南：
+
+- [Guard](/guide/guards)
+- [Pipe](/guide/pipes)
+- [Interceptor](/guide/interceptors)
+- [Filter](/guide/filters)
+
+管道总览：[中间件管道](/guide/middleware)。
+
 ### Pipe
 
 同样 global → class → method。  
