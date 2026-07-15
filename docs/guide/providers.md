@@ -90,7 +90,26 @@ config!: { appName: string; version: string }
 
 ## 作用域
 
-当前默认在容器内按**单例**持有已 resolve 的实例。不要假设「每次 IPC 都会 `new` 一个 Service」。
+通过 `@Injectable({ scope })` 控制实例生命周期：
+
+| Scope | 行为 |
+|-------|------|
+| `'singleton'`（默认） | 首次 `resolve` 后缓存，之后复用同一实例 |
+| `'transient'` | 每次 `resolve` 都 `new` + 属性注入，不缓存 |
+
+```ts
+@Injectable()
+class FileService {} // 默认 singleton，应用内一份
+
+@Injectable({ scope: 'transient' })
+class RequestContext {} // 每次 resolve 都是新实例
+```
+
+ModuleScanner 注册类 Provider 时会读出 `scope`，再传给 `container.register`。日常 Service / Controller 用默认单例即可。
+
+注意：若 **transient** 服务只被注入到 **singleton** Controller，通常在第一次 resolve 该 Controller 时创建一次，并挂在那一个 Controller 上——不会「每次 IPC 都 new」。需要按请求新建时，应在每次调用路径上主动 `resolve`（或自行工厂），而不是只依赖字段注入。
+
+更细的容器行为见 [模块扫描与 DI](/core/di-and-modules#3-scope)。
 
 ## 动手理解 DI
 

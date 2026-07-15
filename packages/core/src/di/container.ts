@@ -73,7 +73,7 @@ export class DIContainer {
       throw new Error(
         `Circular dependency detected: ${this.formatToken(token)} ` +
           `is being resolved while already in chain: ` +
-          `[${[...this.resolving].map((t) => this.formatToken(t)).join(' ??')}]`,
+          `[${[...this.resolving].map((t) => this.formatToken(t)).join(' ? ')}]`,
       )
     }
 

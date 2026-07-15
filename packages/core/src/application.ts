@@ -119,8 +119,6 @@ export class Application {
     const scanner = new ModuleScanner(this.container)
     this.scannedModules = scanner.scan(this.rootModule)
 
-    // console.log('scannedModules', this.scannedModules)
-
     // 2. 等待 Electron 主进程就绪
     await electronApp.whenReady()
 

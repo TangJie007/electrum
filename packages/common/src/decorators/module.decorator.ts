@@ -41,6 +41,5 @@ export function Module(metadata: ModuleMetadata) {
   return (_target: Function, context: ClassDecoratorContext): void => {
     // Stage 3：写入 context.metadata，类定义完成后可经 Symbol.metadata 读出
     context.metadata![META.MODULE] = metadata
-    console.log('Module', metadata)
   }
 }
