@@ -15,8 +15,8 @@ pnpm docs:preview  # preview build
 
 | Locale | URL | Content |
 |--------|-----|---------|
-| 简体中文（默认） | `/` | Root: `index.md`, `guide/`, `core/` |
-| English | `/en/` | Mirror: `en/index.md`, `en/guide/`, `en/core/` |
+| 简体中文（默认） | `/` | Root: `index.md`, `guide/` |
+| English | `/en/` | Mirror: `en/index.md`, `en/guide/` |
 
 Config lives in `.vitepress/config/` (`shared` + `zh` + `en`). The nav language switcher is built into VitePress.
 
@@ -27,8 +27,8 @@ When adding or changing a page, update **both** locales (Chinese source + Englis
 | Path | Description |
 |------|-------------|
 | `index.md` / `en/index.md` | Home |
-| `guide/` / `en/guide/` | User guide |
-| `core/` / `en/core/` | `@electrum/core` deep dive |
+| `guide/` / `en/guide/` | User guide (**published**) |
+| `core/` / `en/core/` | Personal source deep-dive notes — **excluded from the site** (`srcExclude`) |
 | `.vitepress/` | VitePress config |
 
 Design overview: repo root `electron-mvc-framework-design.md`.  

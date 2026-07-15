@@ -5,7 +5,6 @@ export const en: LocaleSpecificConfig<DefaultTheme.Config> = {
   themeConfig: {
     nav: [
       { text: 'Guide', link: '/en/guide/', activeMatch: '/en/guide/' },
-      { text: 'Internals', link: '/en/core/', activeMatch: '/en/core/' },
       {
         text: 'GitHub',
         link: 'https://github.com/TangJie007/electrum',
@@ -35,27 +34,12 @@ export const en: LocaleSpecificConfig<DefaultTheme.Config> = {
             { text: 'Windows & lifecycle', link: '/en/guide/windows-lifecycle' },
             { text: 'Preload', link: '/en/guide/preload' },
             { text: 'Client', link: '/en/guide/client' },
-            { text: 'IPC (supplement)', link: '/en/guide/ipc' },
+            { text: 'IPC', link: '/en/guide/ipc' },
           ],
         },
         {
           text: 'Recipes',
           items: [{ text: 'Example projects', link: '/en/guide/examples' }],
-        },
-      ],
-      '/en/core/': [
-        {
-          text: 'Source deep-dive',
-          items: [
-            { text: 'Learning guide', link: '/en/core/' },
-            { text: 'Architecture', link: '/en/core/architecture' },
-            { text: 'ModuleScanner design', link: '/en/core/module-scanner' },
-            { text: 'Module scan & DI', link: '/en/core/di-and-modules' },
-            { text: 'IPC & middleware', link: '/en/core/ipc-and-middleware' },
-            { text: 'Window / event / lifecycle', link: '/en/core/window-event-lifecycle' },
-            { text: 'Typegen & plugins', link: '/en/core/types-and-plugins' },
-            { text: 'Specs ↔ Core map', link: '/en/core/specs-mapping' },
-          ],
         },
       ],
     },

@@ -67,8 +67,7 @@ pnpm start
 
 ## Docs Site and Design Documents
 
-- This site's "Usage Guide" focuses on how to write code
-- [Deep Dive](/en/core/) focuses on implementation walkthroughs
+- This site's guide focuses on writing application code
 - Repository root design doc: [electron-mvc-framework-design.md](https://github.com/TangJie007/electrum/blob/main/electron-mvc-framework-design.md)
 - Requirement specs: [specs/](https://github.com/TangJie007/electrum/tree/main/specs)
 

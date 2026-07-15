@@ -67,8 +67,7 @@ pnpm start
 
 ## 文档站与设计文稿
 
-- 本站「使用指南」偏怎么写代码
-- [深入源码](/core/) 偏实现走读
+- 本站「使用指南」偏怎么写业务代码
 - 仓库根目录设计方案：[electron-mvc-framework-design.md](https://github.com/TangJie007/electrum/blob/main/electron-mvc-framework-design.md)
 - 需求 Spec：[specs/](https://github.com/TangJie007/electrum/tree/main/specs)
 

@@ -3,8 +3,13 @@ import type { DefaultTheme, UserConfig } from 'vitepress'
 export const shared: UserConfig<DefaultTheme.Config> = {
   title: 'Electrum',
   cleanUrls: true,
-  // GitHub-only READMEs — not site pages
-  srcExclude: ['README.md', 'core/README.md', 'en/README.md'],
+  // GitHub / personal notes — not published site pages
+  srcExclude: [
+    'README.md',
+    'core/**',
+    'en/README.md',
+    'en/core/**',
+  ],
 
   themeConfig: {
     siteTitle: 'Electrum',

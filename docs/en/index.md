@@ -13,8 +13,8 @@ hero:
       text: Controllers
       link: /en/guide/controllers
     - theme: alt
-      text: Deep Dive
-      link: /en/core/
+      text: Examples
+      link: /en/guide/examples
 
 features:
   - title: TS5 Native Decorators

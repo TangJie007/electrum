@@ -1,4 +1,4 @@
-# IPC 通信（补充）
+# IPC 通信
 
 日常用法请先阅读 [Controllers](./controllers)：通道前缀、`@IpcHandle` / `@IpcOn`、模块注册与返回值都在该章说明。
 
@@ -8,7 +8,7 @@
 
 `createApp(AppModule).start()` 内部在**窗口初始化之后**，由 `IpcBridge` resolve 各 Controller 并绑定 `ipcMain`。业务侧只需在模块的 `controllers` 中声明类即可。
 
-为何在创窗之后？Controller 上可能有 `@WindowRef`；若先 resolve 再创窗，注入会失败。详见 [架构总览](/core/architecture)。
+为何在创窗之后？Controller 上可能有 `@WindowRef`；若先 resolve 再创窗，注入会失败。因此框架固定 **先窗口、后 IPC**。
 
 ## 类型骨架
 
@@ -16,7 +16,7 @@
 createApp(AppModule).generateTypes('src/renderer/types/api.d.ts')
 ```
 
-实现细节见 [类型生成与插件](/core/types-and-plugins)。管道行为见 [中间件管道](./middleware)（[Guard](./guards) / [Pipe](./pipes) / [Interceptor](./interceptors) / [Filter](./filters)）与 [IPC 与中间件](/core/ipc-and-middleware)。
+当前多为通道名 → `any` 的骨架，可按需手工收紧。管道行为见 [中间件管道](./middleware)（[Guard](./guards) / [Pipe](./pipes) / [Interceptor](./interceptors) / [Filter](./filters)）。
 
 ## 渲染侧调用
 

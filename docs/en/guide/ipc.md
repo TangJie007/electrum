@@ -1,5 +1,4 @@
-# IPC Communication (Supplement)
-
+# IPC Communication 
 For day-to-day usage, start with [Controllers](./controllers): channel prefixes, `@IpcHandle` / `@IpcOn`, module registration, and return values are covered there.
 
 This page only supplements startup ordering and the type-generation entry point.
@@ -8,7 +7,7 @@ This page only supplements startup ordering and the type-generation entry point.
 
 Inside `createApp(AppModule).start()`, **after window initialization**, `IpcBridge` resolves Controllers and binds `ipcMain`. On the business side, declare classes in the module's `controllers` only.
 
-Why after window creation? Controllers may use `@WindowRef`; resolving before windows exist would fail injection. See [Architecture Overview](/en/core/architecture).
+Why after window creation? Controllers may use `@WindowRef`; resolving before windows exist would fail injection. The framework therefore always does **windows first, then IPC**.
 
 ## Type Skeleton
 
@@ -16,7 +15,7 @@ Why after window creation? Controllers may use `@WindowRef`; resolving before wi
 createApp(AppModule).generateTypes('src/renderer/types/api.d.ts')
 ```
 
-Implementation details: [Type Generation and Plugins](/en/core/types-and-plugins). Pipeline behavior: [Middleware Pipeline](./middleware) ([Guard](./guards) / [Pipe](./pipes) / [Interceptor](./interceptors) / [Filter](./filters)) and [IPC and Middleware](/en/core/ipc-and-middleware).
+Today this is mostly a channel → `any` skeleton; tighten types manually as needed. Pipeline behavior: [Middleware Pipeline](./middleware) ([Guard](./guards) / [Pipe](./pipes) / [Interceptor](./interceptors) / [Filter](./filters)).
 
 ## Renderer-Side Calls
 

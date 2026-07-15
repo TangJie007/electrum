@@ -50,7 +50,7 @@ await createApp(AppModule).start()
 
 同一模块树只会扫描一次（visited 防环）。未标注 `@Module` 的类作为根模块会在扫描时报错。
 
-更细的源码走读见 [模块扫描与 DI](/core/di-and-modules) 与 [ModuleScanner 设计](/core/module-scanner)。
+模块扫描会注册 Provider 并解析 imports；日常用法按上表即可。
 
 ## 下一步
 

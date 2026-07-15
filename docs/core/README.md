@@ -1,12 +1,14 @@
-# @electrum/core 学习指南
+# @electrum/core 学习笔记（不进文档站）
 
-站点页面入口见 [index.md](./index.md)（VitePress）。  
-本文件保留给在 GitHub 上直接浏览 `docs/core` 目录时的说明。
+本目录是作者自学用的源码走读稿，**已从 VitePress 站点排除**（见 `.vitepress/config/shared.mts` 的 `srcExclude`）。
 
-建议阅读顺序与正文请打开本地文档站：
+在仓库里直接打开即可，例如：
 
-```bash
-pnpm docs:dev
-```
+- [index.md](./index.md) — 学习路径总览
+- [architecture.md](./architecture.md)
+- [di-and-modules.md](./di-and-modules.md)
+- …
 
-然后访问「深入源码」侧栏，或打开 `core/index.md`。
+英文镜像：`docs/en/core/`。
+
+对外站点「使用指南」见 `docs/guide/`（`pnpm docs:dev`）。

@@ -50,7 +50,7 @@ Split modules by domain (e.g. `FileModule`, `UserModule`); the root module only 
 
 The same module tree is scanned only once (visited set prevents cycles). A root class without `@Module` throws during scanning.
 
-Deeper source walkthrough: [Module Scanning & DI](/en/core/di-and-modules) and [ModuleScanner Design](/en/core/module-scanner).
+Module scanning registers Providers and resolves imports; the table above covers day-to-day usage.
 
 ## Next Steps
 

@@ -109,7 +109,7 @@ ModuleScanner reads `scope` when registering class Providers and passes it to `c
 
 Note: if a **transient** service is only injected into a **singleton** Controller, it is typically created once when that Controller is first resolved and stays on that one Controller—it does not "new on every IPC." To create per-request instances, actively `resolve` on each call path (or use your own factory) rather than relying solely on field injection.
 
-Finer container behavior in [Module Scanning & DI](/en/core/di-and-modules#3-scope).
+Finer container behavior (singleton / transient, circular dependency detection) is handled by `@electrum/core`'s DI container.
 
 ## Hands-On DI
 

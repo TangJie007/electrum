@@ -55,7 +55,7 @@ await app.start()
 
 事件监听**只跑 Guard**，不跑 Pipe / Interceptor / Filter。详见 [Guard · `@IpcOn` 准入](./guards#5-ipcon-订阅准入)。
 
-实现细节见 [IPC 与中间件](/core/ipc-and-middleware)。
+实现上由 `MiddlewarePipeline` 驱动；日常挂载与场景见上文各页即可。
 
 ## 下一步
 

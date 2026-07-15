@@ -55,7 +55,7 @@ await app.start()
 
 Event listeners run **Guards only**—not Pipe / Interceptor / Filter. See [Guard · `@IpcOn` admission](./guards#5-ipcon-subscription-access).
 
-Implementation details in [IPC & Middleware](/en/core/ipc-and-middleware).
+Runtime is driven by `MiddlewarePipeline`; day-to-day mounting and scenarios are covered on the pages above.
 
 ## Next Steps
 

@@ -285,7 +285,7 @@ Scan all `@IpcHandle` handlers to generate a renderer-side declaration skeleton:
 createApp(AppModule).generateTypes('src/renderer/types/api.d.ts')
 ```
 
-Currently generates a starter skeleton mapping channel names → `any`; tighten parameter types manually as needed. Implementation details in [Type Generation & Plugins](/en/core/types-and-plugins).
+Currently generates a starter skeleton mapping channel names → `any`; tighten parameter types manually as needed, or wire richer type generation later.
 
 ## Full Example
 

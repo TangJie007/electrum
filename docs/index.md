@@ -13,8 +13,8 @@ hero:
       text: Controllers
       link: /guide/controllers
     - theme: alt
-      text: 深入源码
-      link: /core/
+      text: 示例项目
+      link: /guide/examples
 
 features:
   - title: TS5 原生装饰器

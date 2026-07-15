@@ -5,7 +5,6 @@ export const zh: LocaleSpecificConfig<DefaultTheme.Config> = {
   themeConfig: {
     nav: [
       { text: '指南', link: '/guide/', activeMatch: '/guide/' },
-      { text: '深入源码', link: '/core/', activeMatch: '/core/' },
       {
         text: 'GitHub',
         link: 'https://github.com/TangJie007/electrum',
@@ -35,27 +34,12 @@ export const zh: LocaleSpecificConfig<DefaultTheme.Config> = {
             { text: '窗口与生命周期', link: '/guide/windows-lifecycle' },
             { text: 'Preload', link: '/guide/preload' },
             { text: 'Client', link: '/guide/client' },
-            { text: 'IPC 通信（补充）', link: '/guide/ipc' },
+            { text: 'IPC 通信', link: '/guide/ipc' },
           ],
         },
         {
           text: '实践',
           items: [{ text: '示例项目', link: '/guide/examples' }],
-        },
-      ],
-      '/core/': [
-        {
-          text: '深入源码',
-          items: [
-            { text: '学习指南', link: '/core/' },
-            { text: '架构总览', link: '/core/architecture' },
-            { text: 'ModuleScanner 设计', link: '/core/module-scanner' },
-            { text: '模块扫描与 DI', link: '/core/di-and-modules' },
-            { text: 'IPC 与中间件', link: '/core/ipc-and-middleware' },
-            { text: '窗口 / 事件 / 生命周期', link: '/core/window-event-lifecycle' },
-            { text: '类型生成与插件', link: '/core/types-and-plugins' },
-            { text: 'Specs ↔ Core 对照', link: '/core/specs-mapping' },
-          ],
         },
       ],
     },

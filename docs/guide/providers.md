@@ -109,7 +109,7 @@ ModuleScanner 注册类 Provider 时会读出 `scope`，再传给 `container.reg
 
 注意：若 **transient** 服务只被注入到 **singleton** Controller，通常在第一次 resolve 该 Controller 时创建一次，并挂在那一个 Controller 上——不会「每次 IPC 都 new」。需要按请求新建时，应在每次调用路径上主动 `resolve`（或自行工厂），而不是只依赖字段注入。
 
-更细的容器行为见 [模块扫描与 DI](/core/di-and-modules#3-scope)。
+更细的容器行为（singleton / transient、循环依赖检测）由 `@electrum/core` 的 DI 容器保证。
 
 ## 动手理解 DI
 

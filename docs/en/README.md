@@ -1,5 +1,9 @@
-# English Documentation
+# @electrum/core learning notes (not published)
 
-The English documentation site lives under **`/en/`** (for example `/en/guide/`, `/en/core/`).
+These pages are personal source deep-dive notes. They are **excluded from the VitePress site** via `srcExclude` in `.vitepress/config/shared.mts`.
 
-The default site root (`/`) is the **Chinese** documentation.
+Read them in the repo, starting from [index.md](./index.md).
+
+Chinese originals live in `docs/core/`.
+
+Public user guide: `docs/en/guide/` (`pnpm docs:dev` → `/en/guide/`).

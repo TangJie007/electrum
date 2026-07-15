@@ -285,7 +285,7 @@ export class FileController {
 createApp(AppModule).generateTypes('src/renderer/types/api.d.ts')
 ```
 
-当前生成为通道名 → `any` 的起步骨架；更精细的参数类型可手工收紧。实现细节见 [类型生成与插件](/core/types-and-plugins)。
+当前生成为通道名 → `any` 的起步骨架；更精细的参数类型可手工收紧，或后续接入更完整的类型生成。
 
 ## 完整示例
 
