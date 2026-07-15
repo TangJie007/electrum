@@ -23,4 +23,16 @@ export interface IpcApi {
     email?: string
   }) => Promise<{ id: number; name: string; email: string }>
   'user:remove': (id: number) => Promise<{ ok: true }>
+  'window:minimize': () => Promise<void>
+  'window:toggleMaximize': () => Promise<boolean>
+  'window:isMaximized': () => Promise<boolean>
+  'window:close': () => Promise<void>
+  'window:openChild': (data?: { title?: string }) => Promise<{ id: number; title: string }>
+  'window:list': () => Promise<Array<{ id: number; title: string; focused: boolean }>>
+  'window:focus': (id: number) => Promise<boolean>
+  'window:reloadMenu': () => Promise<{ ok: true }>
 }
+
+export type NavView = 'dashboard' | 'users' | 'files' | 'windows'
+
+export type UserRow = { id: number; name: string; email: string }

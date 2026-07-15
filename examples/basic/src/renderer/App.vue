@@ -1,162 +1,171 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import {
+  Monitor,
+  User,
+  Document,
+  Setting,
+} from '@element-plus/icons-vue'
 import { createClient } from '@electrum/client'
-import type { IpcApi } from './ipc-api'
+import type { IpcApi, NavView } from './ipc-api'
+import TitleBar from './components/TitleBar.vue'
+import DashboardView from './views/DashboardView.vue'
+import UsersView from './views/UsersView.vue'
+import FilesView from './views/FilesView.vue'
+import WindowsView from './views/WindowsView.vue'
 
 const api = createClient<IpcApi>()
 
-const infoText = ref('加载中…')
-const pingText = ref('')
-const path = ref('')
-const content = ref('Hello from Electrum!\n')
-const status = ref('')
-const statusOk = ref(true)
-const usersText = ref('加载中…')
-const userName = ref('')
-const userEmail = ref('')
-const userStatus = ref('')
-const userStatusOk = ref(true)
+const params = new URLSearchParams(window.location.search)
+const isChild = params.get('view') === 'child'
+const childTitle = params.get('title') || '子窗口'
 
-function setStatus(message: string, ok = true) {
-  status.value = message
-  statusOk.value = ok
-}
+const active = ref<NavView>((params.get('nav') as NavView) || 'dashboard')
+const appTitle = ref(isChild ? childTitle : 'Electrum Admin')
 
-function setUserStatus(message: string, ok = true) {
-  userStatus.value = message
-  userStatusOk.value = ok
-}
+const menuItems = [
+  { key: 'dashboard' as const, label: '工作台', icon: Monitor },
+  { key: 'users' as const, label: '用户管理', icon: User },
+  { key: 'files' as const, label: '文件读写', icon: Document },
+  { key: 'windows' as const, label: '窗口与菜单', icon: Setting },
+]
 
-async function loadInfo() {
-  try {
-    const info = await api.app.info()
-    infoText.value = JSON.stringify(info, null, 2)
-    document.title = `${info.name} v${info.version}`
-    if (info.demoFile) path.value = info.demoFile
-  } catch (err) {
-    infoText.value = String(err)
-  }
-}
+const pageTitle = computed(() => {
+  if (isChild) return childTitle
+  return menuItems.find((m) => m.key === active.value)?.label || 'Electrum Admin'
+})
 
-async function loadUsers() {
-  try {
-    const users = await api.user.list()
-    usersText.value = JSON.stringify(users, null, 2)
-  } catch (err: any) {
-    usersText.value = String(err)
-    setUserStatus(`${err.code || 'ERROR'}: ${err.message}`, false)
-  }
-}
-
-async function onPing() {
-  const res = await api.app.ping('hello-electrum')
-  pingText.value = JSON.stringify(res, null, 2)
-}
-
-async function onRead() {
-  try {
-    const text = await api.file.read(path.value)
-    content.value = text
-    setStatus('读取成功')
-  } catch (err: any) {
-    setStatus(`${err.code || 'ERROR'}: ${err.message}`, false)
-  }
-}
-
-async function onWrite() {
-  try {
-    await api.file.write({
-      path: path.value,
-      content: content.value,
-    })
-    setStatus('写入成功，主进程已推送 file:saved')
-  } catch (err: any) {
-    setStatus(`${err.code || 'ERROR'}: ${err.message}`, false)
-  }
-}
-
-async function onCreateUser() {
-  try {
-    await api.user.create({
-      name: userName.value || 'New User',
-      email: userEmail.value || 'user@example.com',
-    })
-    userName.value = ''
-    userEmail.value = ''
-    setUserStatus('创建成功')
-    await loadUsers()
-  } catch (err: any) {
-    setUserStatus(`${err.code || 'ERROR'}: ${err.message}`, false)
-  }
-}
-
-let offSaved: (() => void) | undefined
+let offNavigate: (() => void) | undefined
 
 onMounted(() => {
-  void loadInfo()
-  void loadUsers()
-  offSaved = api.on('file:saved', (savedPath) => {
-    setStatus(`已保存: ${savedPath}`)
+  void api.app.info().then((info) => {
+    if (!isChild) {
+      appTitle.value = `${info.name}`
+      document.title = `${info.name} v${info.version}`
+    } else {
+      document.title = childTitle
+    }
+  })
+
+  offNavigate = api.on('menu:navigate', (view) => {
+    if (typeof view === 'string' && menuItems.some((m) => m.key === view)) {
+      active.value = view as NavView
+    }
   })
 })
 
 onUnmounted(() => {
-  offSaved?.()
+  offNavigate?.()
 })
+async function openAnotherChild() {
+  await api.window.openChild({ title: '又一个子窗口' })
+}
 </script>
 
 <template>
-  <main class="shell">
-    <header class="hero">
-      <p class="brand">Electrum</p>
-      <h1>electrum 示例</h1>
-      <p class="lede">装饰器 + DI + IPC，主进程像 Nest 一样组织业务。</p>
-    </header>
+  <div class="app-shell">
+    <TitleBar v-model="active" :title="pageTitle" :is-child="isChild" />
 
-    <section class="panel">
-      <h2>应用信息</h2>
-      <pre class="code">{{ infoText }}</pre>
-      <button type="button" @click="onPing">Ping 主进程</button>
-      <pre class="code muted">{{ pingText }}</pre>
-    </section>
+    <div v-if="isChild" class="child-body">
+      <el-result icon="success" title="这是一个子窗口" :sub-title="childTitle">
+        <template #extra>
+          <p class="hint">
+            与主窗口共享同一套 preload / Renderer。可用标题栏自定义缩小、最大化与关闭；也可用
+            Ctrl+N 再开更多窗口。
+          </p>
+          <el-button type="primary" @click="openAnotherChild">
+            再开一个子窗口
+          </el-button>
+        </template>
+      </el-result>
+    </div>
 
-    <section class="panel">
-      <h2>文件读写 (file:read / file:write)</h2>
-      <label class="field">
-        <span>路径</span>
-        <input v-model="path" type="text" spellcheck="false" />
-      </label>
-      <label class="field">
-        <span>内容</span>
-        <textarea v-model="content" rows="8" spellcheck="false" />
-      </label>
-      <div class="actions">
-        <button type="button" @click="onRead">读取</button>
-        <button type="button" class="primary" @click="onWrite">写入</button>
-      </div>
-      <p class="status" role="status" :data-ok="statusOk ? '1' : '0'">
-        {{ status }}
-      </p>
-    </section>
+    <el-container v-else class="main-body">
+      <el-aside width="220px" class="aside">
+        <div class="brand-block">
+          <div class="brand-name">{{ appTitle }}</div>
+          <div class="brand-sub">示例管理端</div>
+        </div>
+        <el-menu :default-active="active" class="side-menu" @select="(k: string) => (active = k as NavView)">
+          <el-menu-item v-for="item in menuItems" :key="item.key" :index="item.key">
+            <el-icon><component :is="item.icon" /></el-icon>
+            <span>{{ item.label }}</span>
+          </el-menu-item>
+        </el-menu>
+      </el-aside>
 
-    <section class="panel">
-      <h2>用户 (user:list / user:create)</h2>
-      <pre class="code">{{ usersText }}</pre>
-      <label class="field">
-        <span>姓名</span>
-        <input v-model="userName" type="text" placeholder="New User" />
-      </label>
-      <label class="field">
-        <span>邮箱</span>
-        <input v-model="userEmail" type="email" placeholder="user@example.com" />
-      </label>
-      <div class="actions">
-        <button type="button" @click="loadUsers">刷新</button>
-        <button type="button" class="primary" @click="onCreateUser">创建</button>
-      </div>
-      <p class="status" role="status" :data-ok="userStatusOk ? '1' : '0'">
-        {{ userStatus }}
-      </p>
-    </section>
-  </main>
+      <el-main class="content">
+        <DashboardView v-if="active === 'dashboard'" />
+        <UsersView v-else-if="active === 'users'" />
+        <FilesView v-else-if="active === 'files'" />
+        <WindowsView v-else-if="active === 'windows'" />
+      </el-main>
+    </el-container>
+  </div>
 </template>
+
+<style scoped>
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: #f5f7fa;
+}
+
+.main-body {
+  flex: 1;
+  min-height: 0;
+}
+
+.aside {
+  border-right: 1px solid #e4e7ed;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+.brand-block {
+  padding: 18px 18px 12px;
+}
+
+.brand-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #303133;
+}
+
+.brand-sub {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #909399;
+}
+
+.side-menu {
+  border-right: none;
+  background: transparent;
+  flex: 1;
+}
+
+.content {
+  padding: 20px 22px;
+  overflow: auto;
+  background: #f5f7fa;
+}
+
+.child-body {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #f5f7fa;
+}
+
+.hint {
+  max-width: 420px;
+  margin: 0 auto 16px;
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+</style>

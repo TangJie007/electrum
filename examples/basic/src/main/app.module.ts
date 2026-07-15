@@ -13,7 +13,7 @@ import { ConfigService } from './config.service'
     {
       provide: 'APP_CONFIG',
       useFactory: () => ({
-        appName: 'Electrum Demo',
+        appName: 'Electrum Admin',
         version: '0.1.0',
       }),
     },
