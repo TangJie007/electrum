@@ -61,4 +61,5 @@ Electrum uses **TypeScript 5 Stage 3 native decorators**—no `experimentalDecor
 
 ## Next Steps
 
-→ [Getting Started](./getting-started)
+→ [Quick start](./getting-started)  
+→ [Architecture](./architecture) (package layers, bootstrap, end-to-end IPC)

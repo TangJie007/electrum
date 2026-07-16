@@ -10,6 +10,9 @@ hero:
       text: 快速开始
       link: /guide/getting-started
     - theme: alt
+      text: 整体架构
+      link: /guide/architecture
+    - theme: alt
       text: Controllers
       link: /guide/controllers
     - theme: alt

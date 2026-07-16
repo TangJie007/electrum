@@ -54,7 +54,15 @@ export class DIContainer {
     })
   }
 
+  /**
+   * 从 token 解析实例。支持四类来源：
+   * 1. 虚拟 token（如 @WindowRef 注册的 `electrum:window:*`）
+   * 2. 已缓存的 singleton
+   * 3. Provider（useValue / useFactory / useClass）
+   * 4. 直接传 Class 作 token（未显式 register 时按 useClass 处理）
+   */
   resolve<T = any>(token: Token): T {
+    // @WindowRef('main') 写入的 token 是 Symbol.for('electrum:window:main')，不走 providers 表
     if (typeof token === 'symbol') {
       const tokenStr = token.description || ''
       if (tokenStr.startsWith('electrum:window:')) {
@@ -65,10 +73,12 @@ export class DIContainer {
       }
     }
 
+    // singleton 命中则直接返回，避免重复 new / 属性注入
     if (this.singletons.has(token)) {
       return this.singletons.get(token)
     }
 
+    // 正在解析链上再次出现同一 token → 环依赖
     if (this.resolving.has(token)) {
       throw new Error(
         `Circular dependency detected: ${this.formatToken(token)} ` +
@@ -79,11 +89,13 @@ export class DIContainer {
 
     const record = this.providers.get(token)
 
+    // useValue：常量 / 配置对象，无构造过程
     if (record && 'useValue' in record && record.useValue !== undefined) {
       if (record.scope === 'singleton') this.singletons.set(token, record.useValue)
       return record.useValue
     }
 
+    // useFactory：先 resolve inject 列表，再调工厂函数
     if (record?.useFactory) {
       const injectTokens = record.inject || []
       const args = injectTokens.map((t) => this.resolve(t))
@@ -92,6 +104,7 @@ export class DIContainer {
       return instance
     }
 
+    // useClass 或未 register 的 Class token
     const targetClass = record?.useClass || (typeof token === 'function' ? token : null)
     if (!targetClass) {
       throw new Error(`No provider found for token: ${this.formatToken(token)}`)
@@ -100,6 +113,7 @@ export class DIContainer {
     this.resolving.add(token)
 
     try {
+      // Stage 3 装饰器无 ctor 注入：先 new，再按 META.INJECTIONS 填属性
       const instance = new (targetClass as any)()
       const injections = readMetadata<InjectionPoint[]>(targetClass, META.INJECTIONS) || []
       const controllerMeta = readMetadata<{ prefix?: string; window?: string }>(
@@ -111,6 +125,7 @@ export class DIContainer {
 
       for (const injection of injections) {
         if (injection.type === 'window') {
+          // @WindowRef：从 WindowManager 取 BrowserWindow
           const win = this.windowProvider(injection.windowName!)
           if (win) {
             instance[injection.propertyKey] = win
@@ -120,6 +135,7 @@ export class DIContainer {
             )
           }
         } else if (injection.type === 'emit') {
+          // @IpcEmit：注入一个函数，内部走 windowSender → webContents.send
           const channel = injection.emitChannel || ''
           const fullChannel = prefix ? `${prefix}:${channel}` : channel
           const target = injection.emitWindow ?? controllerWindow ?? 'main'
@@ -127,10 +143,12 @@ export class DIContainer {
             this.windowSender(target, fullChannel, ...args)
           }
         } else if (injection.type === 'optional') {
+          // @Optional：token 未注册则跳过，不抛错
           if (this.has(injection.token)) {
             instance[injection.propertyKey] = this.resolve(injection.token)
           }
         } else {
+          // @Inject：递归 resolve 依赖的 Provider / Class
           instance[injection.propertyKey] = this.resolve(injection.token)
         }
       }

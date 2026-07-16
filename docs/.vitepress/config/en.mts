@@ -17,6 +17,7 @@ export const en: LocaleSpecificConfig<DefaultTheme.Config> = {
           items: [
             { text: 'Overview', link: '/en/guide/' },
             { text: 'Quick start', link: '/en/guide/getting-started' },
+            { text: 'Architecture', link: '/en/guide/architecture' },
             { text: 'Concepts', link: '/en/guide/concepts' },
           ],
         },

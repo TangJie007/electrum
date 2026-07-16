@@ -63,12 +63,109 @@ resolve does the work: new Cls() → read @Inject → recursively resolve → as
 
 ## Custom Providers
 
-Beyond plain classes, `useClass` / `useValue` / `useFactory` are supported:
+Besides plain classes (`providers: [UserService]`), three object forms are supported. Pattern: `provide` is the injection **token**; the rest says how to produce the value.
+
+| Form | Syntax | When to use |
+|------|--------|-------------|
+| Class | `UserService` | Everyday Services / injectable classes |
+| `useValue` | `{ provide, useValue }` | Constants, config objects, existing instances |
+| `useClass` | `{ provide, useClass }` | Interface token ↔ implementation; test doubles |
+| `useFactory` | `{ provide, useFactory, inject? }` | Build a value after resolving other Providers |
+
+Each form follows: **register in the module → `@Inject(token)` on a field → use it in business methods**.
+
+### useValue — provide a value as-is
+
+**Use when**: config constants, feature flags, or a third-party object you already have (no `new`).
 
 ```ts
+// 1. Register
+@Module({
+  providers: [
+    ApiClient,
+    { provide: 'API_URL', useValue: 'https://api.example.com' },
+    { provide: 'FEATURE_FLAGS', useValue: { hmr: true, dark: false } },
+  ],
+})
+export class AppModule {}
+
+// 2. Inject and use
+@Injectable()
+export class ApiClient {
+  @Inject('API_URL')
+  apiUrl!: string
+
+  @Inject('FEATURE_FLAGS')
+  flags!: { hmr: boolean; dark: boolean }
+
+  fetchUsers() {
+    if (!this.flags.hmr) console.log('HMR off')
+    return fetch(`${this.apiUrl}/users`) // use the injected constant
+  }
+}
+```
+
+`resolve` returns that value directly (cached as singleton by default).
+
+### useClass — separate token from implementation
+
+**Use when**: inject via an abstract / string token and swap implementations (mock in tests, real in prod).
+
+```ts
+// 1. Abstract + implementations
+abstract class Storage {
+  abstract read(key: string): string
+}
+
+@Injectable()
+class FileStorage extends Storage {
+  read(key: string) {
+    return `file:${key}`
+  }
+}
+
+@Injectable()
+class MemoryStorage extends Storage {
+  private data = new Map<string, string>()
+  read(key: string) {
+    return this.data.get(key) ?? ''
+  }
+}
+
+// 2. Register: token is Storage, instance is FileStorage
+@Module({
+  providers: [
+    SettingsService,
+    { provide: Storage, useClass: FileStorage },
+    // In tests: { provide: Storage, useClass: MemoryStorage }
+  ],
+})
+export class AppModule {}
+
+// 3. Inject and use (depend on the abstract type only)
+@Injectable()
+export class SettingsService {
+  @Inject(Storage)
+  storage!: Storage
+
+  getTheme() {
+    return this.storage.read('theme') // calls FileStorage.read
+  }
+}
+```
+
+Equivalent to “token = `Storage`, create with `new FileStorage()` then property-inject.”
+
+### useFactory — assemble with a factory
+
+**Use when**: creation depends on other Providers, env vars, or branching logic.
+
+```ts
+// 1. Register (with or without inject)
 @Module({
   providers: [
     ConfigService,
+    BannerService,
     {
       provide: 'APP_CONFIG',
       useFactory: () => ({
@@ -76,16 +173,49 @@ Beyond plain classes, `useClass` / `useValue` / `useFactory` are supported:
         version: '0.1.0',
       }),
     },
+    {
+      provide: 'BANNER',
+      inject: ['APP_CONFIG'],
+      useFactory: (cfg: { appName: string; version: string }) =>
+        `=== ${cfg.appName} v${cfg.version} ===`,
+    },
   ],
 })
 export class AppModule {}
+
+// 2. Inject and use factory products
+@Injectable()
+export class ConfigService {
+  @Inject('APP_CONFIG')
+  config!: { appName: string; version: string }
+
+  get appName() {
+    return this.config.appName // use the object returned by the factory
+  }
+}
+
+@Injectable()
+export class BannerService {
+  @Inject('BANNER')
+  banner!: string
+
+  print() {
+    console.log(this.banner) // === Electrum Demo v0.1.0 ===
+  }
+}
 ```
 
-Inject a custom token:
+- `inject`: tokens for factory arguments; resolved before the factory runs  
+- Without `inject`, the factory is called with no args (see `APP_CONFIG` above)
 
-```ts
-@Inject('APP_CONFIG')
-config!: { appName: string; version: string }
+In `examples/basic`, `AppModule` + `ConfigService` is the full chain: `useFactory('APP_CONFIG')` → `@Inject('APP_CONFIG')` → `this.config.appName`.
+
+### Choosing a form
+
+```
+Just need to new a class?              → plain class, or useClass
+Already have a ready value?            → useValue
+Need other deps before assembling?     → useFactory + inject
 ```
 
 ## Scope

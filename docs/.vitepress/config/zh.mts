@@ -5,6 +5,7 @@ export const zh: LocaleSpecificConfig<DefaultTheme.Config> = {
   themeConfig: {
     nav: [
       { text: '指南', link: '/guide/', activeMatch: '/guide/' },
+      { text: '源码学习', link: '/demo/', activeMatch: '/demo/' },
       {
         text: 'GitHub',
         link: 'https://github.com/TangJie007/electrum',
@@ -17,6 +18,7 @@ export const zh: LocaleSpecificConfig<DefaultTheme.Config> = {
           items: [
             { text: '概述', link: '/guide/' },
             { text: '快速开始', link: '/guide/getting-started' },
+            { text: '整体架构', link: '/guide/architecture' },
             { text: '核心概念', link: '/guide/concepts' },
           ],
         },
@@ -40,6 +42,21 @@ export const zh: LocaleSpecificConfig<DefaultTheme.Config> = {
         {
           text: '实践',
           items: [{ text: '示例项目', link: '/guide/examples' }],
+        },
+      ],
+      '/demo/': [
+        {
+          text: '实现走读',
+          items: [
+            { text: '目录', link: '/demo/' },
+            { text: '从 createApp 到 start', link: '/demo/create-app-start' },
+            { text: '模块扫描与注册', link: '/demo/module-scanner' },
+            { text: '@Inject 注入路径', link: '/demo/inject' },
+            { text: '@IpcHandle 绑定路径', link: '/demo/ipc-handle' },
+            { text: '一次 invoke 怎么跑完', link: '/demo/middleware-pipeline' },
+            { text: '@IpcEmit 推送路径', link: '/demo/ipc-emit' },
+            { text: '@AppEvent 绑定路径', link: '/demo/app-event' },
+          ],
         },
       ],
     },

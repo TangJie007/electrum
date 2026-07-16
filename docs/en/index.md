@@ -10,6 +10,9 @@ hero:
       text: Getting Started
       link: /en/guide/getting-started
     - theme: alt
+      text: Architecture
+      link: /en/guide/architecture
+    - theme: alt
       text: Controllers
       link: /en/guide/controllers
     - theme: alt

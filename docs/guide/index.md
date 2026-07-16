@@ -48,6 +48,8 @@ Electrum 提供开箱即用的应用结构，灵感来自 NestJS / Angular：
 业务主进程：`@electrum/common` 写声明，`@electrum/core` 的 `createApp` 启动。  
 渲染链路：`preload` 里 `exposeApi()`，渲染里 `createClient()`。装饰器本身不执行业务，只写 `Symbol.metadata`；接线发生在 `createApp(AppModule).start()`。
 
+想跟一条真实代码路径（如 `@IpcHandle('info')`、`@Inject(ConfigService)`），见 [实现走读](/demo/)。
+
 Electrum 使用 **TypeScript 5 Stage 3 原生装饰器**，不依赖 `experimentalDecorators` 与 `reflect-metadata`。
 
 ## 与裸写 Electron 的对比
@@ -61,4 +63,5 @@ Electrum 使用 **TypeScript 5 Stage 3 原生装饰器**，不依赖 `experiment
 
 ## 下一步
 
-→ [快速开始](./getting-started)
+→ [快速开始](./getting-started)  
+→ [整体架构](./architecture)（包分层、启动时序、IPC 全链路）

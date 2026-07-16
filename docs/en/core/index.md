@@ -11,6 +11,7 @@ To build applications, start with the [User Guide](/en/guide/); this section is 
 
 | Order | Document | Source code |
 |------|------|----------|
+| 0 | [Architecture (site)](/en/guide/architecture) | Monorepo layers / bootstrap / end-to-end IPC |
 | 1 | [Architecture overview](./architecture) | `application.ts`, `index.ts` |
 | 2 | [ModuleScanner design](./module-scanner) | `module/scanner.ts` |
 | 3 | [Module scan & DI](./di-and-modules) | `module/scanner.ts`, `di/container.ts` |

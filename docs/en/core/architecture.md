@@ -1,5 +1,8 @@
 # Core Architecture Overview
 
+> For **monorepo-wide** layering and bootstrap, see the site doc [Architecture](/en/guide/architecture).  
+> This page focuses on `@electrum/core` source layout and `start()` orchestration.
+
 ## 1. Source Map
 
 ```

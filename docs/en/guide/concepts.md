@@ -39,4 +39,5 @@ You can start with a single Controller—no need to refactor all main-process co
 
 ## Next Steps
 
+→ [Architecture](./architecture)  
 → [Controllers](./controllers)

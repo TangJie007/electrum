@@ -39,4 +39,5 @@
 
 ## 下一步
 
+→ [整体架构](./architecture)  
 → [Controllers](./controllers)
