@@ -10,15 +10,13 @@
 
 为何在创窗之后？Controller 上可能有 `@WindowRef`；若先 resolve 再创窗，注入会失败。因此框架固定 **先窗口、后 IPC**。
 
-<!-- 暂隐：类型骨架（generateTypes 精确推断未完成前不对外文档化）
-## 类型骨架
+## 类型生成
 
-```ts
-createApp(AppModule).generateTypes('src/renderer/types/api.d.ts')
+```bash
+pnpm exec electrum-codegen --tsconfig tsconfig.json --output src/renderer/ipc-api.ts
 ```
 
-当前多为通道名 → `any` 的骨架，可按需手工收紧。
--->
+详见 [Controllers](./controllers#类型生成可选) 与 `@electrum/codegen`。
 
 管道行为见 [中间件管道](./middleware)（[Guard](./guards) / [Pipe](./pipes) / [Interceptor](./interceptors) / [Filter](./filters)）。
 

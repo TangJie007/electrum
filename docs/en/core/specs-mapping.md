@@ -26,22 +26,22 @@ specs/ feature slices
 | Spec module | Feature spec | Source location | Completion | Notes |
 |-----------|-----------|----------|--------|------|
 | App bootstrap & API | createApp startup orchestration | `application.ts` | ✅ Mostly done | `start()` chains scan→windows→IPC→hooks |
-| App bootstrap & API | Application runtime API | `application.ts` | ✅ Mostly done | `use` / `useGlobal*` / `resolve` / `generateTypes`, etc. |
+| App bootstrap & API | Application runtime API | `application.ts` | ✅ Mostly done | `use` / `useGlobal*` / `resolve`, etc. |
 | DI container | Property injection resolution | `di/container.ts` | ✅ Mostly done | `new` + read `META.INJECTIONS` |
 | DI container | Scope & circular dependency detection | `di/container.ts` | ✅ Mostly done | singleton / transient + resolving chain |
 | Module system | ModuleScanner module tree scan | `module/scanner.ts` | ✅ Mostly done | DFS imports, register Providers |
 | Module system | ModuleScanner module tree scan | `module/scanner.ts` | ✅ Code present | Providers share one global container |
 | IPC bridge | Controller auto-bind ipcMain | `bridge/ipc-bridge.ts` | ✅ Mostly done | `prefix:channel` → handle/on |
 | IPC bridge | IPC argument position convention | `ipc-bridge` + `pipeline` | ✅ Mostly done | Handle: no event; On: has event |
-| Middleware chain | Guard Pipe Interceptor Filter pipeline | `middleware/pipeline.ts` | ✅ Code present | Formal Spec AC acceptance still pending |
+| Middleware chain | Guard Pipe Interceptor Filter pipeline | `middleware/pipeline.ts` | ✅ Mostly done | Covered by pipeline unit tests |
 | Middleware chain | Middleware decorators & global registration | pipeline + `useGlobal*` | ✅ Code present | Decorator bodies in common |
 | Window management | Declarative window creation & DI integration | `window/manager.ts` | ✅ Mostly done | Create windows before resolving `@WindowRef` |
 | Window management | Cross-window communication | `window/manager.ts` | ✅ Mostly done | `sendTo` / `broadcast` |
 | Event system | EventBridge binds AppEvent | `bridge/event-bridge.ts` | ✅ Mostly done | `app.on` → instance method |
 | Lifecycle | Three hooks & parallel execution | `lifecycle/manager.ts` | ✅ Mostly done | Parallel via `allSettled` |
 | Lifecycle | Startup / shutdown ordering | `application.ts` | ✅ Mostly done | ready / before-quit |
-| Type generation | Renderer api.d.ts generation | `type-generator/generator.ts` | ⚠️ Skeleton | Channels present; types mostly `any` |
-| Type generation | ts-morph precise types & Preload generation | — | ❌ Not done | Roadmap v0.4 |
+| Type generation | Renderer api.d.ts generation | `@electrum/codegen` | ✅ Done | `electrum-codegen` / `generateIpcTypes` (ts-morph) |
+| Type generation | ts-morph precise types & Preload generation | `@electrum/codegen` | ⚠️ Partial | Precise types done; preload script gen still roadmap |
 | Plugin system | Plugin interface & install lifecycle | `plugin/` + `use()` | ⚠️ Interface only | `install` / `ready` / `destroy` |
 | Plugin system | Official plugin package naming reserved | — | ❌ Reserved only | `@electrum/plugin-*` |
 | HMR & dev experience | electron-vite integration preset | Example config | ⚠️ Not a framework package | `examples/basic`: `electron-vite dev --watch` full process restart |
@@ -57,9 +57,10 @@ middleware/pipeline.ts  → Middleware chain (runtime execution)
 window/manager.ts       → Window management
 bridge/event-bridge.ts  → Event system
 lifecycle/manager.ts    → Lifecycle hook execution
-type-generator/         → Type generation (skeleton only today)
 plugin/                 → Plugin system interface
 ```
+
+Type generation → **`@electrum/codegen`** (outside core)
 
 ---
 
@@ -72,9 +73,10 @@ plugin/                 → Plugin system interface
 | Error handling | `@electrum/common` + `@electrum/preload` | Exception classes in common; renderer restore via `exposeApi()` |
 | Logging | `@electrum/common` | `Logger` |
 | Package layout & tooling | monorepo root | workspace / tsup / tsconfig |
-| Testing utilities | `@electrum/testing` | `createTestContainer` |
+| Testing utilities | `@electrum/testing` | `createTestContainer`, `mockElectron` |
 | Renderer Preload bridge | `@electrum/preload` | `exposeApi` / `IpcError` |
 | Renderer IPC client | `@electrum/client` | `createClient` (`api.user.list()`) |
+| IPC type generation | `@electrum/codegen` | `electrum-codegen` / `generateIpcTypes` |
 
 Core **depends on and reads** common metadata; it does not "implement" decorators themselves.
 

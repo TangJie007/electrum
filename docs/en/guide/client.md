@@ -28,7 +28,7 @@ export interface IpcApi {
 }
 ```
 
-You can generate a skeleton with `createApp(...).generateTypes(...)`, then fill in precise types by hand.
+Generate this map with `electrum-codegen` (see [Controllers · Type Generation](./controllers#type-generation-optional)).
 
 ## Usage
 

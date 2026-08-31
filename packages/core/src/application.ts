@@ -7,7 +7,6 @@ import { IpcBridge } from './bridge/ipc-bridge'
 import { EventBridge } from './bridge/event-bridge'
 import { WindowManager } from './window/manager'
 import { LifecycleManager } from './lifecycle/manager'
-import { TypeGenerator } from './type-generator/generator'
 import type { Plugin } from './plugin/plugin.interface'
 
 /**
@@ -91,20 +90,6 @@ export class Application {
 
   getContainer(): DIContainer {
     return this.container
-  }
-
-  /**
-   * 根据已扫描的 @IpcHandle 生成渲染侧 api.d.ts 骨架。
-   * 若尚未 start，会先扫描一次模块（不启动 Electron）。
-   */
-  generateTypes(outputPath: string): this {
-    if (this.scannedModules.length === 0) {
-      const scanner = new ModuleScanner(this.container)
-      this.scannedModules = scanner.scan(this.rootModule)
-    }
-    new TypeGenerator(this.scannedModules).generate(outputPath)
-    this.logger.log(`Types generated → ${outputPath}`)
-    return this
   }
 
   /**

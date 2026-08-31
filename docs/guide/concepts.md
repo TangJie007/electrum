@@ -16,7 +16,8 @@
 | `@electrum/core` | 运行时引擎 | `createApp`、DI、扫描、IPC / Event bridge、窗口管理 |
 | `@electrum/preload` | preload 安全桥 | `exposeApi`、`IpcError` |
 | `@electrum/client` | 渲染进程 IPC 客户端 | `createClient` |
-| `@electrum/testing` | 测试辅助 | `createTestContainer` |
+| `@electrum/testing` | 测试辅助 | `createTestContainer`、`mockElectron` |
+| `@electrum/codegen` | IPC 类型生成 CLI | `electrum-codegen`、`generateIpcTypes` |
 
 主进程日常从 `@electrum/common` 写声明，用 `@electrum/core` 的 `createApp` 启动。  
 渲染进程：`@electrum/preload` + `@electrum/client`。详见 [Preload](./preload)、[Client](./client)。  
@@ -30,7 +31,7 @@
 - 声明式窗口 `@WindowDeclaration`
 - 中间件链（[Guard](./guards) / [Pipe](./pipes) / [Interceptor](./interceptors) / [Filter](./filters)，总览 [中间件管道](./middleware)）
 - 生命周期钩子、日志、异常类型
-- IPC 通道类型骨架生成（`generateTypes`）
+- IPC 通道类型生成（`electrum-codegen` / `@electrum/codegen`）
 - 渲染侧：`@electrum/preload` / `@electrum/client`（见 [Preload](./preload)、[Client](./client)）
 
 ## 渐进式引入

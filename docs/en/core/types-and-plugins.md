@@ -2,50 +2,48 @@
 
 Corresponding source:
 
-- `packages/core/src/type-generator/generator.ts`
+- `@electrum/codegen` (`packages/codegen`) — precise IPC type generation via ts-morph
 - `packages/core/src/plugin/plugin.interface.ts`
-- `packages/core/src/application.ts` (`generateTypes` / `use`)
+- `packages/core/src/application.ts` (`use`)
 
-## 1. TypeGenerator (Current Capabilities)
+## 1. Type Generation (`@electrum/codegen`)
 
-### What It Does
+Runtime `Application` no longer embeds a type generator. Use the **`electrum-codegen` CLI** (or the `generateIpcTypes` API) to scan `@Controller` / `@IpcHandle` sources and emit a typed `IpcApi` declaration.
 
-Scans all `@IpcHandle` channels and writes a renderer-side declaration skeleton, for example:
+```bash
+# from an app with controllers on the TypeScript project
+pnpm exec electrum-codegen \
+  --tsconfig tsconfig.json \
+  --output src/renderer/ipc-api.ts \
+  --global
+```
+
+```ts
+import { generateIpcTypes } from '@electrum/codegen'
+
+await generateIpcTypes({
+  tsconfig: 'tsconfig.json',
+  outputPath: 'src/renderer/ipc-api.ts',
+  includeGlobal: true,
+})
+```
+
+Generated shapes look like:
 
 ```ts
 export interface IpcApi {
-  'file:read': (...args: any[]) => Promise<any>
+  'file:read': (path: string) => Promise<string>
   // ...
 }
 
 export interface ElectronAPI {
   invoke: <K extends keyof IpcApi>(channel: K, ...args: Parameters<IpcApi[K]>) => ReturnType<IpcApi[K]>
-  on: ...
-  send: ...
-}
-
-declare global {
-  interface Window { api: ElectronAPI }
+  on: (channel: string, listener: (...args: any[]) => void) => void
+  send: (channel: string, ...args: any[]) => void
 }
 ```
 
-Usage:
-
-```ts
-createApp(AppModule).generateTypes('src/renderer/types/api.d.ts')
-```
-
-Or before `start`, as long as the root module can be scanned.
-
-### Limitations (Don't Misread While Learning)
-
-Current implementation does **not** yet use ts-morph to extract real parameter/return types; everything is `any`.  
-Roadmap v0.4 is "precise types + auto-generated preload scripts". **Hand-written preload** already works with `@electrum/preload`'s `exposeApi()`; renderer calls use `@electrum/client`. Today's type generator is for:
-
-- Ensuring channel names exist as type keys  
-- Providing a base literal union for `Window.api.invoke` channels
-
-When reading code, focus on how `META.CONTROLLER` + `META.IPC_HANDLE` build `prefix:channel`—same rules as IpcBridge.
+See `examples/basic` (`pnpm codegen`) for a full wiring example. Preload still uses `@electrum/preload`'s `exposeApi()`; renderer calls use `@electrum/client`.
 
 ## 2. Plugin Interface
 

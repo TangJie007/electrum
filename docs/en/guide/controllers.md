@@ -88,7 +88,7 @@ Corresponds to Electron's `ipcMain.handle`. The renderer uses **`ipcRenderer.inv
 - CRUD, reading config, reading files, computing and returning results—"ask once, answer once"
 - Business logic that needs `await` and errors propagated to the renderer
 - Full middleware (Guard / Pipe / Interceptor / Filter)
-- Generating renderer-side type skeletons (`generateTypes` only scans `@IpcHandle`)
+- Generating renderer-side types via `electrum-codegen` (scans `@IpcHandle`)
 
 **Method signature:** `(...args)`—the framework strips `event`; you only write business parameters.
 
@@ -277,15 +277,24 @@ export class FileController {
 
 See [Middleware Pipeline](./middleware): [Guard](./guards) · [Pipe](./pipes) · [Interceptor](./interceptors) · [Filter](./filters).
 
-## Type Skeleton (Optional)
+## Type Generation (Optional)
 
-Scan all `@IpcHandle` handlers to generate a renderer-side declaration skeleton:
+Scan `@Controller` / `@IpcHandle` sources with **`@electrum/codegen`** to emit a typed `IpcApi`:
 
-```ts
-createApp(AppModule).generateTypes('src/renderer/types/api.d.ts')
+```bash
+pnpm exec electrum-codegen --tsconfig tsconfig.json --output src/renderer/ipc-api.ts
 ```
 
-Currently generates a starter skeleton mapping channel names → `any`; tighten parameter types manually as needed, or wire richer type generation later.
+```ts
+import { generateIpcTypes } from '@electrum/codegen'
+
+await generateIpcTypes({
+  tsconfig: 'tsconfig.json',
+  outputPath: 'src/renderer/ipc-api.ts',
+})
+```
+
+See [`examples/basic`](https://github.com/TangJie007/electrum/tree/main/examples/basic) (`pnpm codegen`).
 
 ## Full Example
 

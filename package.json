@@ -7,7 +7,7 @@
     "build": "pnpm --filter @electrum/common --filter @electrum/core --filter @electrum/preload --filter @electrum/client --filter @electrum/testing --filter @electrum/codegen run build",
     "dev:example": "pnpm --filter @electrum/example-basic dev",
     "build:example": "pnpm --filter @electrum/example-basic build",
-    "test": "pnpm --filter @electrum/common --filter @electrum/core --filter @electrum/preload --filter @electrum/client --filter @electrum/codegen run test",
+    "test": "pnpm --filter @electrum/common --filter @electrum/core --filter @electrum/preload --filter @electrum/client --filter @electrum/codegen --filter @electrum/testing run test",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs"

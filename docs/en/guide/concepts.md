@@ -16,7 +16,8 @@ This page supplements the overview with a few additional conventions. If you hav
 | `@electrum/core` | Runtime engine | `createApp`, DI, scanning, IPC / Event bridge, window management |
 | `@electrum/preload` | Preload security bridge | `exposeApi`, `IpcError` |
 | `@electrum/client` | Renderer-process IPC client | `createClient` |
-| `@electrum/testing` | Test helpers | `createTestContainer` |
+| `@electrum/testing` | Test helpers | `createTestContainer`, `mockElectron` |
+| `@electrum/codegen` | IPC type generation CLI | `electrum-codegen`, `generateIpcTypes` |
 
 Day-to-day main process: write declarations from `@electrum/common`, bootstrap with `createApp` from `@electrum/core`.  
 Renderer process: `@electrum/preload` + `@electrum/client`. See [Preload](./preload), [Client](./client).  
@@ -30,7 +31,7 @@ Renderer process: `@electrum/preload` + `@electrum/client`. See [Preload](./prel
 - Declarative windows: `@WindowDeclaration`
 - Middleware chain ([Guard](./guards) / [Pipe](./pipes) / [Interceptor](./interceptors) / [Filter](./filters); overview in [Middleware Pipeline](./middleware))
 - Lifecycle hooks, logging, exception types
-- IPC channel type skeleton generation (`generateTypes`)
+- IPC channel type generation (`electrum-codegen` / `@electrum/codegen`)
 - Renderer side: `@electrum/preload` / `@electrum/client` (see [Preload](./preload), [Client](./client))
 
 ## Incremental Adoption

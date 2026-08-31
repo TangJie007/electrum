@@ -28,7 +28,7 @@ export interface IpcApi {
 }
 ```
 
-可用 `createApp(...).generateTypes(...)` 生成骨架，再手填精确类型。
+可用 `electrum-codegen` 生成该类型表（见 [Controllers · 类型生成](./controllers#类型生成可选)）。
 
 ## 用法
 

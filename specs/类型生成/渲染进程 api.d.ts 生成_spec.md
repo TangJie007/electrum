@@ -10,15 +10,15 @@
 
 ## 功能描述
 
-TypeGenerator 扫描 @IpcHandle 元数据生成 IpcApi/ElectronAPI 与 Window.api 声明；app.generateTypes(path) 可调用
+@electrum/codegen（electrum-codegen / generateIpcTypes）扫描 @Controller/@IpcHandle 生成带类型的 IpcApi；可选 Window.api 全局声明
 
 ---
 
 ## 验收标准
 
-- [ ] 输出文件声明各 channel 的 invoke 签名骨架
-- [ ] declare global Window.api: ElectronAPI
-- [ ] 开发启动路径可调用 generateTypes
+- [ ] 输出文件声明各 channel 的 invoke 精确签名
+- [ ] 可选 declare global Window.api: ElectronAPI（--global）
+- [ ] 开发路径可通过 electrum-codegen CLI 或 generateIpcTypes API 调用
 
 ---
 

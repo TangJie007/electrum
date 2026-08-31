@@ -9,15 +9,13 @@ Inside `createApp(AppModule).start()`, **after window initialization**, `IpcBrid
 
 Why after window creation? Controllers may use `@WindowRef`; resolving before windows exist would fail injection. The framework therefore always does **windows first, then IPC**.
 
-<!-- Temporarily hidden: type skeleton (document after precise generateTypes inference lands)
-## Type Skeleton
+## Type Generation
 
-```ts
-createApp(AppModule).generateTypes('src/renderer/types/api.d.ts')
+```bash
+pnpm exec electrum-codegen --tsconfig tsconfig.json --output src/renderer/ipc-api.ts
 ```
 
-Today this is mostly a channel → `any` skeleton; tighten types manually as needed.
--->
+See [Controllers](./controllers#type-generation-optional) and `@electrum/codegen`.
 
 Pipeline behavior: [Middleware Pipeline](./middleware) ([Guard](./guards) / [Pipe](./pipes) / [Interceptor](./interceptors) / [Filter](./filters)).
 

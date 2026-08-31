@@ -20,7 +20,8 @@ Electrum 是面向 **Electron 主进程** 的 NestJS 风格 MVC 框架：
 | `@electrum/core` | 运行时编排 | `createApp`、`Application.start` |
 | `@electrum/preload` | preload 安全桥 | `exposeApi()` → `window.api` |
 | `@electrum/client` | 渲染侧类型化调用 | `createClient<IpcApi>()` |
-| `@electrum/testing` | 单测 DI 辅助 | `createTestContainer` |
+| `@electrum/testing` | 单测 DI + Electron mock | `createTestContainer`、`mockElectron` |
+| `@electrum/codegen` | 精确 IPC `IpcApi` 生成 | `electrum-codegen` |
 | `examples/basic` | 完整 Electron + Vue 示例 | `createApp(AppModule).start()` |
 | `examples/di` | 迷你 DI 教学（无 Electron） | 手写 `register` / `resolve` |
 
@@ -87,7 +88,7 @@ createApp(AppModule)
 | `MiddlewarePipeline` | `middleware/pipeline.ts` | Guard → Pipe → Interceptor → Filter |
 | `WindowManager` | `window/manager.ts` | 声明式建窗、按名取窗、推送消息 |
 | `LifecycleManager` | `lifecycle/manager.ts` | `onModuleInit` / `onAppReady` / `onModuleDestroy` |
-| `TypeGenerator` | `type-generator/` | 扫描通道，生成渲染侧 `IpcApi` 骨架 |
+| — | `@electrum/codegen` | 扫描源码，生成带类型的渲染侧 `IpcApi` |
 
 ## 5. 装饰器与运行时对照
 

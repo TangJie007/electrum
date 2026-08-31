@@ -17,7 +17,7 @@ To build applications, start with the [User Guide](/en/guide/); this section is 
 | 3 | [Module scan & DI](./di-and-modules) | `module/scanner.ts`, `di/container.ts` |
 | 4 | [IPC bridge & middleware](./ipc-and-middleware) | `bridge/ipc-bridge.ts`, `middleware/pipeline.ts` |
 | 5 | [Window / event / lifecycle](./window-event-lifecycle) | `window/`, `bridge/event-bridge.ts`, `lifecycle/` |
-| 6 | [Type generation & plugins](./types-and-plugins) | `type-generator/`, `plugin/` |
+| 6 | [Type generation & plugins](./types-and-plugins) | `@electrum/codegen`, `plugin/` |
 | 7 | [Specs ↔ Core mapping](./specs-mapping) | `specs/` and implementation coverage |
 
 Read alongside the example: `examples/basic/src/main/`.

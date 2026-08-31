@@ -88,7 +88,7 @@ export class AppController {
 - CRUD、读配置、读文件、计算并拿结果——「问一句、答一句」
 - 需要 `await`、错误要传到渲染进程的业务
 - 希望走完整中间件（Guard / Pipe / Interceptor / Filter）
-- 生成渲染侧类型骨架（`generateTypes` 只扫 `@IpcHandle`）
+- 用 `electrum-codegen` 生成渲染侧类型（扫描 `@IpcHandle`）
 
 **方法签名：** `(...args)`，框架会剥掉 `event`，你只写业务参数。
 
@@ -277,15 +277,24 @@ export class FileController {
 
 详见 [中间件管道](./middleware)：[Guard](./guards) · [Pipe](./pipes) · [Interceptor](./interceptors) · [Filter](./filters)。
 
-## 类型骨架（可选）
+## 类型生成（可选）
 
-可扫描全部 `@IpcHandle` 生成渲染侧声明骨架：
+用 **`@electrum/codegen`** 扫描 `@Controller` / `@IpcHandle` 源码，生成带精确类型的 `IpcApi`：
 
-```ts
-createApp(AppModule).generateTypes('src/renderer/types/api.d.ts')
+```bash
+pnpm exec electrum-codegen --tsconfig tsconfig.json --output src/renderer/ipc-api.ts
 ```
 
-当前生成为通道名 → `any` 的起步骨架；更精细的参数类型可手工收紧，或后续接入更完整的类型生成。
+```ts
+import { generateIpcTypes } from '@electrum/codegen'
+
+await generateIpcTypes({
+  tsconfig: 'tsconfig.json',
+  outputPath: 'src/renderer/ipc-api.ts',
+})
+```
+
+完整接线见 [`examples/basic`](https://github.com/TangJie007/electrum/tree/main/examples/basic)（`pnpm codegen`）。
 
 ## 完整示例
 

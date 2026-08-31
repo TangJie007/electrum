@@ -17,9 +17,10 @@ packages/core/src/
 ├── middleware/pipeline.ts   # Guard → Pipe → Interceptor → Filter
 ├── window/manager.ts        # Declarative windows + @WindowRef lookup
 ├── lifecycle/manager.ts     # onModuleInit / onAppReady / onModuleDestroy
-├── type-generator/          # Scan channels, generate renderer-side api.d.ts skeleton
 └── plugin/                  # Plugin interface (install / ready / destroy)
 ```
+
+> Precise IPC types: use **`@electrum/codegen`** (`electrum-codegen`), not a core runtime API.
 
 ## 2. Layering
 
@@ -86,7 +87,8 @@ Controllers may use `@WindowRef`. If you `resolve(Controller)` before creating w
 | `useGlobalGuards/Pipes/Interceptors/Filters` | Append to Pipeline global lists |
 | `resolve(token)` | Pass through to DI |
 | `getWindowManager()` / `getContainer()` | Access internal components |
-| `generateTypes(path)` | Scan channels and write `.d.ts` |
+
+IPC type generation lives in **`@electrum/codegen`** (`electrum-codegen` CLI / `generateIpcTypes`).
 
 ## 5. Correspondence with NestJS
 

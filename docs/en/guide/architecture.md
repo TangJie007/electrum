@@ -20,7 +20,8 @@ It does not replace Electron APIs; it organizes them so main-process code is mod
 | `@electrum/core` | Runtime orchestration | `createApp`, `Application.start` |
 | `@electrum/preload` | Safe preload bridge | `exposeApi()` → `window.api` |
 | `@electrum/client` | Typed renderer calls | `createClient<IpcApi>()` |
-| `@electrum/testing` | DI helpers for tests | `createTestContainer` |
+| `@electrum/testing` | DI helpers + Electron mock | `createTestContainer`, `mockElectron` |
+| `@electrum/codegen` | Precise IPC `IpcApi` generation | `electrum-codegen` |
 | `examples/basic` | Full Electron + Vue sample | `createApp(AppModule).start()` |
 | `examples/di` | Mini DI tutorial (no Electron) | Manual `register` / `resolve` |
 
@@ -87,7 +88,7 @@ IPC registration `resolve`s Controllers that may need `@WindowRef` / `@IpcEmit`;
 | `MiddlewarePipeline` | `middleware/pipeline.ts` | Guard → Pipe → Interceptor → Filter |
 | `WindowManager` | `window/manager.ts` | Declarative windows, lookup, push send |
 | `LifecycleManager` | `lifecycle/manager.ts` | `onModuleInit` / `onAppReady` / `onModuleDestroy` |
-| `TypeGenerator` | `type-generator/` | Scan channels; emit renderer `IpcApi` skeleton |
+| — | `@electrum/codegen` | Scan sources; emit typed renderer `IpcApi` |
 
 ## 5. Decorators vs runtime
 
