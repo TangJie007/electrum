@@ -20,7 +20,9 @@
     "@wetspace/wetspec-cli": "^1.2.2"
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
     "turbo": "^2.5.0",
+    "typescript": "^5.5.0",
     "vitepress": "^1.6.4"
   },
   "packageManager": "pnpm@11.22.0"
