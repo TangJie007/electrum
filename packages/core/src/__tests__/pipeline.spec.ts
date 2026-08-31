@@ -26,6 +26,11 @@ class DemoController {
     throw new NotFoundException('file')
   }
 
+  @IpcHandle('missing')
+  missing() {
+    throw new NotFoundException('file')
+  }
+
   @IpcHandle('write')
   write() {
     throw new ForbiddenException('denied')
@@ -52,6 +57,28 @@ describe('MiddlewarePipeline.runFilters', () => {
       __error: true,
       code: 'FORBIDDEN',
       message: 'denied',
+    })
+  })
+
+  it('serializes NotFoundException with correct code when no filter is registered', async () => {
+    const container = new DIContainer()
+    const pipeline = new MiddlewarePipeline(container)
+    const instance = new DemoController()
+
+    const result = await pipeline.execute({
+      type: 'handle',
+      instance,
+      method: 'missing',
+      controllerClass: DemoController,
+      channel: 'demo:missing',
+      event: {} as any,
+      args: [],
+    })
+
+    expect(result).toEqual({
+      __error: true,
+      code: 'NOT_FOUND',
+      message: 'file not found',
     })
   })
 
