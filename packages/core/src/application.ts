@@ -42,6 +42,7 @@ export class Application {
   private plugins: Plugin[] = []
   private logger = new Logger('Application')
   private started = false
+  private shuttingDown = false
 
   /**
    * @param rootModule 根模块类（须有 @Module），一般是 AppModule
@@ -157,13 +158,17 @@ export class Application {
     return this
   }
 
-  /** 应用退出清理 */
+  /** 应用退出清理（幂等：重复调用直接返回） */
   private async shutdown(): Promise<void> {
+    if (this.shuttingDown) return
+    this.shuttingDown = true
+
     for (const plugin of this.plugins) {
       await plugin.destroy?.(this)
     }
     await this.lifecycle?.runHook('onModuleDestroy')
     this.ipcBridge?.unregisterAll()
+    this.eventBridge?.unregisterAll()
   }
 }
 
