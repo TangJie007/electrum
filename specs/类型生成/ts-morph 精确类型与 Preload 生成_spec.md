@@ -10,14 +10,14 @@
 
 ## 功能描述
 
-从源码 AST 提取参数/返回类型；并生成 preload 脚本（路线图 v0.4）
+从源码 AST 提取参数/返回类型；并生成 preload 脚本（exposeApi + 通道 allowlist）
 
 ---
 
 ## 验收标准
 
 - [ ] 生成签名不再仅为 ...args:any[] / any
-- [ ] 能产出可用的 preload 暴露脚本或明确生成产物路径
+- [ ] 能产出可用的 preload 暴露脚本（`--preload` / `preloadOutputPath`）
 
 ---
 

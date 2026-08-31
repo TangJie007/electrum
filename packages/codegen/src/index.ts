@@ -1,6 +1,7 @@
 export {
   generateIpcTypes,
   buildIpcApiDeclaration,
+  buildPreloadScript,
   scanIpcChannels,
   createProject,
 } from './generate'

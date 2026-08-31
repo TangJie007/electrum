@@ -283,6 +283,8 @@ Scan `@Controller` / `@IpcHandle` sources with **`@electrum/codegen`** to emit a
 
 ```bash
 pnpm exec electrum-codegen --tsconfig tsconfig.json --output src/renderer/ipc-api.ts
+# optional: also emit preload
+pnpm exec electrum-codegen --tsconfig tsconfig.json --output src/renderer/ipc-api.ts --preload src/preload/index.ts
 ```
 
 ```ts
@@ -291,10 +293,11 @@ import { generateIpcTypes } from '@electrum/codegen'
 await generateIpcTypes({
   tsconfig: 'tsconfig.json',
   outputPath: 'src/renderer/ipc-api.ts',
+  preloadOutputPath: 'src/preload/index.ts',
 })
 ```
 
-See [`examples/basic`](https://github.com/TangJie007/electrum/tree/main/examples/basic) (`pnpm codegen`).
+See [`examples/basic`](https://github.com/TangJie007/electrum/tree/main/examples/basic) (`pnpm codegen` runs on `predev` / `prebuild`).
 
 ## Full Example
 

@@ -7,17 +7,19 @@ function printUsage(): void {
 
 Options:
   --tsconfig <path>   Path to tsconfig.json (required)
-  --output <path>   Output file path (required)
-  --include <glob>  Source glob (repeatable, default: all project .ts files)
-  --no-dev-only     Skip @IpcHandle({ devOnly: true }) channels
-  --global          Also emit Window.api global declaration
-  -h, --help        Show help
+  --output <path>     Output IpcApi declaration file (required)
+  --preload <path>    Also write a preload script (exposeApi + channel allowlist)
+  --include <glob>    Source glob (repeatable, default: all project .ts files)
+  --no-dev-only       Skip @IpcHandle({ devOnly: true }) channels
+  --global            Also emit Window.api global declaration
+  -h, --help          Show help
 `)
 }
 
 function parseArgs(argv: string[]): {
   tsconfig?: string
   output?: string
+  preload?: string
   include: string[]
   includeDevOnly?: boolean
   includeGlobal?: boolean
@@ -33,6 +35,9 @@ function parseArgs(argv: string[]): {
         break
       case '--output':
         result.output = argv[++i]
+        break
+      case '--preload':
+        result.preload = argv[++i]
         break
       case '--include':
         result.include.push(argv[++i])
@@ -64,15 +69,19 @@ async function main(): Promise<void> {
     process.exit(args.help && args.tsconfig && args.output ? 0 : 1)
   }
 
-  const { channels, outputPath } = await generateIpcTypes({
+  const { channels, outputPath, preloadOutputPath } = await generateIpcTypes({
     tsconfig: path.resolve(args.tsconfig),
     outputPath: path.resolve(args.output),
+    preloadOutputPath: args.preload ? path.resolve(args.preload) : undefined,
     include: args.include.length > 0 ? args.include : undefined,
     includeDevOnly: args.includeDevOnly,
     includeGlobal: args.includeGlobal,
   })
 
   console.log(`Generated ${channels.length} IPC channel(s) → ${outputPath}`)
+  if (preloadOutputPath) {
+    console.log(`Generated preload script → ${preloadOutputPath}`)
+  }
 }
 
 main().catch((err) => {

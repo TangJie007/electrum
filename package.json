@@ -4,10 +4,10 @@
   "private": true,
   "description": "NestJS-inspired MVC framework for Electron (@electrum/*)",
   "scripts": {
-    "build": "pnpm --filter @electrum/common --filter @electrum/core --filter @electrum/preload --filter @electrum/client --filter @electrum/testing --filter @electrum/codegen run build",
+    "build": "turbo run build --filter=@electrum/common --filter=@electrum/core --filter=@electrum/preload --filter=@electrum/client --filter=@electrum/testing --filter=@electrum/codegen",
     "dev:example": "pnpm --filter @electrum/example-basic dev",
     "build:example": "pnpm --filter @electrum/example-basic build",
-    "test": "pnpm --filter @electrum/common --filter @electrum/core --filter @electrum/preload --filter @electrum/client --filter @electrum/codegen --filter @electrum/testing run test",
+    "test": "turbo run test --filter=@electrum/common --filter=@electrum/core --filter=@electrum/preload --filter=@electrum/client --filter=@electrum/codegen --filter=@electrum/testing",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs"
@@ -20,6 +20,8 @@
     "@wetspace/wetspec-cli": "^1.2.2"
   },
   "devDependencies": {
+    "turbo": "^2.5.0",
     "vitepress": "^1.6.4"
-  }
+  },
+  "packageManager": "pnpm@11.22.0"
 }

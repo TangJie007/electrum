@@ -7,16 +7,17 @@ Demonstrates `@electrum/common` + `@electrum/core` + `@electrum/preload` + `@ele
 - Frameless window + custom title bar controls (minimize / maximize / close)
 - Custom in-app menus + native `Menu` accelerators
 - Multi-window (`window:openChild`)
-- Global filters / interceptors
-- Preload: `exposeApi()` from `@electrum/preload`
+- Guard / Pipe / global filters / interceptors
+- Plugin lifecycle (`install` / `ready` / `destroy`)
+- Preload: codegen-generated `exposeApi()` + channel allowlist
 - Renderer: Vue 3 + Element Plus + `createClient()`
-- IPC types: `@electrum/codegen` → `pnpm codegen`
+- IPC types: `@electrum/codegen` runs on `predev` / `prebuild`
 
 ## Dev
 
 ```bash
-pnpm dev   # electron-vite dev --watch
-pnpm codegen   # regenerate src/renderer/ipc-api.ts from @IpcHandle signatures
+pnpm dev       # codegen → electron-vite dev --watch
+pnpm codegen   # regenerate ipc-api.ts + preload/index.ts
 ```
 
 From repo root:
@@ -34,6 +35,8 @@ pnpm dev:example
 | 路径 | 内容 |
 |------|------|
 | `src/main/window/` | 无边框主窗、窗口控制、多窗口、原生菜单 |
-| `src/main/user/`、`file/` | 业务 Controller |
-| `src/preload/index.ts` | `exposeApi()` |
+| `src/main/user/`、`file/` | 业务 Controller（含 Guard / Pipe / IpcOn） |
+| `src/preload/index.ts` | codegen 生成（`exposeApi` + `IPC_INVOKE_CHANNELS`） |
 | `src/renderer/` | Element Plus 管理端（标题栏 / 侧栏 / 各页面） |
+| `src/renderer/ipc-api.ts` | codegen 生成的 `IpcApi` |
+| `src/renderer/app-types.ts` | 手写 UI 类型（`NavView` / `UserRow`） |

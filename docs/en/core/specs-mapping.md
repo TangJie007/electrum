@@ -41,7 +41,7 @@ specs/ feature slices
 | Lifecycle | Three hooks & parallel execution | `lifecycle/manager.ts` | ✅ Mostly done | Parallel via `allSettled` |
 | Lifecycle | Startup / shutdown ordering | `application.ts` | ✅ Mostly done | ready / before-quit |
 | Type generation | Renderer api.d.ts generation | `@electrum/codegen` | ✅ Done | `electrum-codegen` / `generateIpcTypes` (ts-morph) |
-| Type generation | ts-morph precise types & Preload generation | `@electrum/codegen` | ⚠️ Partial | Precise types done; preload script gen still roadmap |
+| Type generation | ts-morph precise types & Preload generation | `@electrum/codegen` | ✅ Mostly done | Precise types + `--preload` script; allowlist only |
 | Plugin system | Plugin interface & install lifecycle | `plugin/` + `use()` | ⚠️ Interface only | `install` / `ready` / `destroy` |
 | Plugin system | Official plugin package naming reserved | — | ❌ Reserved only | `@electrum/plugin-*` |
 | HMR & dev experience | electron-vite integration preset | Example config | ⚠️ Not a framework package | `examples/basic`: `electron-vite dev --watch` full process restart |

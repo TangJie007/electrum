@@ -9,8 +9,11 @@ const api = createClient<IpcApi>()
 const path = ref('')
 const content = ref('Hello from Electrum!\n')
 const saving = ref(false)
+const watching = ref(false)
+const lastChange = ref('')
 
 let offSaved: (() => void) | undefined
+let offChanged: (() => void) | undefined
 
 async function initPath() {
   try {
@@ -41,15 +44,30 @@ async function onWrite() {
   }
 }
 
+function onWatch() {
+  if (!path.value) {
+    ElMessage.warning('请先填写路径')
+    return
+  }
+  api.send('file:watch', path.value)
+  watching.value = true
+  ElMessage.success(`已订阅 file:watch → ${path.value}`)
+}
+
 onMounted(() => {
   void initPath()
   offSaved = api.on('file:saved', (savedPath) => {
     ElMessage.success(`主进程已推送 file:saved → ${savedPath}`)
   })
+  offChanged = api.on('file:changed', (payload) => {
+    lastChange.value = typeof payload === 'object' ? JSON.stringify(payload) : String(payload)
+    ElMessage.info(`file:changed → ${lastChange.value}`)
+  })
 })
 
 onUnmounted(() => {
   offSaved?.()
+  offChanged?.()
 })
 </script>
 
@@ -57,7 +75,10 @@ onUnmounted(() => {
   <div class="page">
     <div class="page-head">
       <h2>文件读写</h2>
-      <p>演示 file:read / file:write，以及主进程 @IpcEmit 推送 file:saved。</p>
+      <p>
+        演示 file:read / file:write、@IpcEmit 推送 file:saved，以及 @IpcOn('watch') →
+        file:changed。
+      </p>
     </div>
 
     <el-card shadow="never">
@@ -77,6 +98,12 @@ onUnmounted(() => {
         <el-form-item>
           <el-button @click="onRead">读取</el-button>
           <el-button type="primary" :loading="saving" @click="onWrite">写入</el-button>
+          <el-button type="success" @click="onWatch">
+            {{ watching ? '已监听' : '开始监听' }}
+          </el-button>
+        </el-form-item>
+        <el-form-item v-if="lastChange" label="最近 file:changed">
+          <el-text type="info" class="mono-text">{{ lastChange }}</el-text>
         </el-form-item>
       </el-form>
     </el-card>
@@ -103,5 +130,11 @@ onUnmounted(() => {
 :deep(.mono textarea) {
   font-family: Consolas, 'Cascadia Code', monospace;
   font-size: 13px;
+}
+
+.mono-text {
+  font-family: Consolas, 'Cascadia Code', monospace;
+  font-size: 12px;
+  word-break: break-all;
 }
 </style>

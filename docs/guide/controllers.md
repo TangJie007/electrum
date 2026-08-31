@@ -283,6 +283,8 @@ export class FileController {
 
 ```bash
 pnpm exec electrum-codegen --tsconfig tsconfig.json --output src/renderer/ipc-api.ts
+# 可选：同时生成 preload
+pnpm exec electrum-codegen --tsconfig tsconfig.json --output src/renderer/ipc-api.ts --preload src/preload/index.ts
 ```
 
 ```ts
@@ -291,10 +293,11 @@ import { generateIpcTypes } from '@electrum/codegen'
 await generateIpcTypes({
   tsconfig: 'tsconfig.json',
   outputPath: 'src/renderer/ipc-api.ts',
+  preloadOutputPath: 'src/preload/index.ts',
 })
 ```
 
-完整接线见 [`examples/basic`](https://github.com/TangJie007/electrum/tree/main/examples/basic)（`pnpm codegen`）。
+完整接线见 [`examples/basic`](https://github.com/TangJie007/electrum/tree/main/examples/basic)（`predev` / `prebuild` 自动跑 `pnpm codegen`）。
 
 ## 完整示例
 

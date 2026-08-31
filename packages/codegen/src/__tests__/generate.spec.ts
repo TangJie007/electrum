@@ -75,4 +75,29 @@ describe('generateIpcTypes', () => {
     expect(content).toContain("'user:get': (id: number)")
     expect(content).not.toContain('any[]')
   })
+
+  it('writes preload script with exposeApi and channel allowlist', async () => {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'electrum-codegen-'))
+    tempDirs.push(tempDir)
+    const outputPath = path.join(tempDir, 'ipc-api.ts')
+    const preloadPath = path.join(tempDir, 'preload.ts')
+
+    const result = await generateIpcTypes({
+      tsconfig: path.join(fixturesDir, 'tsconfig.json'),
+      outputPath,
+      preloadOutputPath: preloadPath,
+      include: [path.join(fixturesDir, '**/*.ts')],
+      includeDevOnly: false,
+    })
+
+    expect(result.preloadOutputPath).toBe(preloadPath)
+    expect(fs.existsSync(preloadPath)).toBe(true)
+
+    const content = fs.readFileSync(preloadPath, 'utf-8')
+    expect(content).toContain("from '@electrum/preload'")
+    expect(content).toContain('exposeApi()')
+    expect(content).toContain('IPC_INVOKE_CHANNELS')
+    expect(content).toContain("'user:list'")
+    expect(content).toContain("'file:read'")
+  })
 })

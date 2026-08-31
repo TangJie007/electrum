@@ -35,15 +35,25 @@ export interface IpcApi {
   'file:read': (path: string) => Promise<string>
   // ...
 }
-
-export interface ElectronAPI {
-  invoke: <K extends keyof IpcApi>(channel: K, ...args: Parameters<IpcApi[K]>) => ReturnType<IpcApi[K]>
-  on: (channel: string, listener: (...args: any[]) => void) => void
-  send: (channel: string, ...args: any[]) => void
-}
 ```
 
-See `examples/basic` (`pnpm codegen`) for a full wiring example. Preload still uses `@electrum/preload`'s `exposeApi()`; renderer calls use `@electrum/client`.
+Optionally also emit a preload entry:
+
+```bash
+pnpm exec electrum-codegen \
+  --tsconfig tsconfig.json \
+  --output src/renderer/ipc-api.ts \
+  --preload src/preload/index.ts
+```
+
+```ts
+// preload output
+import { exposeApi } from '@electrum/preload'
+export const IPC_INVOKE_CHANNELS = ['file:read', ...] as const
+exposeApi()
+```
+
+See `examples/basic` (`pnpm codegen`) for a full wiring example. Renderer calls use `@electrum/client`.
 
 ## 2. Plugin Interface
 

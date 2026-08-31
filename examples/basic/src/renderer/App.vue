@@ -7,7 +7,8 @@ import {
   Setting,
 } from '@element-plus/icons-vue'
 import { createClient } from '@electrum/client'
-import type { IpcApi, NavView } from './ipc-api'
+import type { IpcApi } from './ipc-api'
+import type { NavView } from './app-types'
 import TitleBar from './components/TitleBar.vue'
 import DashboardView from './views/DashboardView.vue'
 import UsersView from './views/UsersView.vue'

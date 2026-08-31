@@ -2,7 +2,8 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { createClient } from '@electrum/client'
-import type { IpcApi, UserRow } from '../ipc-api'
+import type { IpcApi } from '../ipc-api'
+import type { UserRow } from '../app-types'
 
 const api = createClient<IpcApi>()
 

@@ -13,7 +13,8 @@ import {
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { createClient } from '@electrum/client'
-import type { IpcApi, NavView } from '../ipc-api'
+import type { IpcApi } from '../ipc-api'
+import type { NavView } from '../app-types'
 
 const props = defineProps<{
   modelValue: NavView

@@ -1,6 +1,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { buildIpcApiDeclaration } from './build-declaration'
+import { buildPreloadScript } from './build-preload'
 import { createProject, scanIpcChannels, type IpcChannelSignature } from './ast/controller-scanner'
 
 export interface GenerateIpcTypesOptions {
@@ -8,6 +9,8 @@ export interface GenerateIpcTypesOptions {
   tsconfig: string
   /** Output .ts/.d.ts file path (absolute or relative to cwd) */
   outputPath: string
+  /** Optional preload script output path (calls exposeApi + channel allowlist) */
+  preloadOutputPath?: string
   /** Glob patterns for source scan (default: all .ts under tsconfig project) */
   include?: string[]
   /** Include devOnly IPC channels (default: true unless NODE_ENV=production) */
@@ -18,6 +21,7 @@ export interface GenerateIpcTypesOptions {
 
 export interface GenerateIpcTypesResult {
   outputPath: string
+  preloadOutputPath?: string
   channels: IpcChannelSignature[]
 }
 
@@ -30,6 +34,7 @@ export interface GenerateIpcTypesResult {
  * await generateIpcTypes({
  *   tsconfig: 'tsconfig.json',
  *   outputPath: 'src/renderer/ipc-api.ts',
+ *   preloadOutputPath: 'src/preload/index.ts',
  * })
  * ```
  */
@@ -52,9 +57,17 @@ export async function generateIpcTypes(
   fs.mkdirSync(path.dirname(outputPath), { recursive: true })
   fs.writeFileSync(outputPath, content, 'utf-8')
 
-  return { outputPath, channels }
+  let preloadOutputPath: string | undefined
+  if (options.preloadOutputPath) {
+    preloadOutputPath = path.resolve(options.preloadOutputPath)
+    fs.mkdirSync(path.dirname(preloadOutputPath), { recursive: true })
+    fs.writeFileSync(preloadOutputPath, buildPreloadScript(channels), 'utf-8')
+  }
+
+  return { outputPath, preloadOutputPath, channels }
 }
 
 export type { IpcChannelSignature } from './ast/controller-scanner'
 export { buildIpcApiDeclaration } from './build-declaration'
+export { buildPreloadScript } from './build-preload'
 export { scanIpcChannels, createProject } from './ast/controller-scanner'

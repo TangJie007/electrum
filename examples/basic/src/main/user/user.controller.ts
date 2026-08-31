@@ -1,7 +1,9 @@
-import { Controller, IpcHandle, Inject } from '@electrum/common'
+import { Controller, IpcHandle, Inject, UseGuards, UsePipes } from '@electrum/common'
 import { UserService, type User } from './user.service'
+import { AllowAllGuard, TrimStringsPipe } from './user.middleware'
 
 @Controller('user')
+@UseGuards(AllowAllGuard)
 export class UserController {
   @Inject(UserService)
   users!: UserService
@@ -17,11 +19,13 @@ export class UserController {
   }
 
   @IpcHandle('create')
+  @UsePipes(TrimStringsPipe)
   create(data: { name: string; email: string }): User {
     return this.users.create(data)
   }
 
   @IpcHandle('update')
+  @UsePipes(TrimStringsPipe)
   update(data: { id: number; name?: string; email?: string }): User {
     const { id, ...patch } = data
     return this.users.update(id, patch)

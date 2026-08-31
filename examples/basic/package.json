@@ -5,10 +5,12 @@
   "description": "Basic Electron example using @electrum/core",
   "main": "./out/main/index.js",
   "scripts": {
+    "codegen": "electrum-codegen --tsconfig tsconfig.json --output src/renderer/ipc-api.ts --preload src/preload/index.ts",
+    "predev": "pnpm codegen",
+    "prebuild": "pnpm codegen",
     "dev": "electron-vite dev --watch",
     "build": "electron-vite build",
-    "preview": "electron-vite preview",
-    "codegen": "electrum-codegen --tsconfig tsconfig.json --output src/renderer/ipc-api.ts"
+    "preview": "electron-vite preview"
   },
   "dependencies": {
     "@electrum/client": "workspace:*",
