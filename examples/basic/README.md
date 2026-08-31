@@ -10,11 +10,13 @@ Demonstrates `@electrum/common` + `@electrum/core` + `@electrum/preload` + `@ele
 - Global filters / interceptors
 - Preload: `exposeApi()` from `@electrum/preload`
 - Renderer: Vue 3 + Element Plus + `createClient()`
+- IPC types: `@electrum/codegen` → `pnpm codegen`
 
 ## Dev
 
 ```bash
 pnpm dev   # electron-vite dev --watch
+pnpm codegen   # regenerate src/renderer/ipc-api.ts from @IpcHandle signatures
 ```
 
 From repo root:

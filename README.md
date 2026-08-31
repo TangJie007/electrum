@@ -17,6 +17,7 @@ pnpm docs:dev
 ```
 packages/common   → @electrum/common（装饰器 / 接口 / 异常）
 packages/core     → @electrum/core（运行时：DI / IPC / Application）
+packages/codegen  → @electrum/codegen（IPC 类型生成 CLI / ts-morph）
 examples/basic    → @electrum/example-basic
 ```
 
