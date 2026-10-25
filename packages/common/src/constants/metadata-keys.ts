@@ -33,12 +33,38 @@ export const META = {
   METHOD_PIPES: Symbol.for('electrum:method_pipes'),
   METHOD_INTERCEPTORS: Symbol.for('electrum:method_interceptors'),
   METHOD_FILTERS: Symbol.for('electrum:method_filters'),
+
+  /** @Catch — 该 Filter 负责的异常类型列表 */
+  CATCH: Symbol.for('electrum:catch'),
 } as const
 
+/** 类 → metadata 对象的缓存：注入路径每次 resolve 都会读，避免反复触达 Symbol.metadata */
+const metadataCache = new WeakMap<Function, Record<PropertyKey, unknown>>()
+
 export function getClassMetadata(target: Function): Record<PropertyKey, unknown> {
-  return ((target as any)[Symbol.metadata] as Record<PropertyKey, unknown>) || {}
+  let metadata = metadataCache.get(target)
+  if (!metadata) {
+    metadata = ((target as any)[Symbol.metadata] as Record<PropertyKey, unknown>) || {}
+    metadataCache.set(target, metadata)
+  }
+  return metadata
 }
 
 export function readMetadata<T>(target: Function, key: PropertyKey): T | undefined {
   return getClassMetadata(target)[key] as T | undefined
+}
+
+/**
+ * 取一份**可安全修改**的元数据数组副本。
+ *
+ * `Symbol.metadata` 在类继承时会把子类的 metadata 对象的原型指向父类的，
+ * 于是 `metadata[KEY]` 可能读到**父类那个数组本身**。直接 `push` 会污染父类
+ * （例如给 Base 塞进 Child 才有的 `@Inject` 字段），因此这里一律写时复制。
+ */
+export function ownMetadataArray<T>(
+  metadata: Record<PropertyKey, unknown> | undefined,
+  key: PropertyKey,
+): T[] {
+  const existing = metadata?.[key] as T[] | undefined
+  return existing ? [...existing] : []
 }

@@ -31,6 +31,13 @@ interface ProviderRecord {
   token: Token
   useClass?: Function
   useValue?: any
+  /**
+   * 是否显式提供了 `useValue`。
+   *
+   * 不能靠 `useValue !== undefined` 判断：`{ useValue: undefined }` 是合法配置
+   * （占位 / 测试 mock），用值判断会把它误当成「没有 useValue」而走进构造流程。
+   */
+  hasValue: boolean
   useFactory?: (...args: any[]) => any
   inject?: Token[]
   scope: Scope
@@ -94,6 +101,59 @@ interface InjectionContext {
  * 3. Provider（useValue / useFactory / useClass）
  * 4. 直接把 Class 当 token（未 register 时按 useClass 处理）
  */
+/** request 作用域代理的内部标记；用 Symbol.for 保证跨模块副本一致 */
+export const REQUEST_SCOPE_PROXY = Symbol.for('electrum:request-scope-proxy')
+
+/**
+ * 把（可能嵌套的）request 作用域代理展开成普通对象。
+ *
+ * V8 的 `structuredClone` 一律拒绝 Proxy（报 "could not be cloned"），
+ * 而 Electron IPC 的返回值必须可结构化克隆 —— 只补 ownKeys 还不够，
+ * 出口处必须真正把代理读成数据。
+ *
+ * 只重建「普通对象 / 数组 / 代理」，Date / Map / Buffer 等内建类型原样返回，
+ * 交给结构化克隆自己处理。
+ */
+export function unwrapRequestScope<T>(value: T, depth = 0): T {
+  if (value === null || typeof value !== 'object') return value
+  if (depth > 32) return value
+
+  const source = value as any
+
+  if (source[REQUEST_SCOPE_PROXY] === true) {
+    const plain: Record<string, unknown> = {}
+    for (const key of Object.keys(source)) {
+      plain[key] = unwrapRequestScope(source[key], depth + 1)
+    }
+    return plain as T
+  }
+
+  if (Array.isArray(value)) {
+    let changed = false
+    const next = value.map((item) => {
+      const unwrapped = unwrapRequestScope(item, depth + 1)
+      if (unwrapped !== item) changed = true
+      return unwrapped
+    })
+    return (changed ? next : value) as T
+  }
+
+  const proto = Object.getPrototypeOf(value)
+  if (proto === Object.prototype || proto === null) {
+    let changed = false
+    const plain: Record<string, unknown> = {}
+    for (const key of Object.keys(value)) {
+      const original = source[key]
+      const unwrapped = unwrapRequestScope(original, depth + 1)
+      if (unwrapped !== original) changed = true
+      plain[key] = unwrapped
+    }
+    return (changed ? plain : value) as T
+  }
+
+  return value
+}
+
 export class DIContainer {
   private singletons = new Map<Token, any>()
   private providers = new Map<Token, ProviderRecord>()
@@ -151,6 +211,7 @@ export class DIContainer {
       token,
       useClass: options.useClass,
       useValue: options.useValue,
+      hasValue: Object.hasOwn(options, 'useValue'),
       useFactory: options.useFactory,
       inject: options.inject,
       scope: options.scope || 'singleton',
@@ -210,8 +271,8 @@ export class DIContainer {
 
     const record = this.providers.get(token)
 
-    // useValue：常量 / 配置对象，无构造过程
-    if (record && record.useValue !== undefined) {
+    // useValue：常量 / 配置对象，无构造过程（含显式 undefined）
+    if (record?.hasValue) {
       this.assertVisible(token, fromModule)
       if (record.scope === 'singleton') this.singletons.set(token, record.useValue)
       return record.useValue
@@ -285,7 +346,7 @@ export class DIContainer {
 
     const record = this.providers.get(token)
 
-    if (record && record.useValue !== undefined) {
+    if (record?.hasValue) {
       this.assertVisible(token, fromModule)
       if (record.scope === 'singleton') this.singletons.set(token, record.useValue)
       return record.useValue
@@ -306,6 +367,10 @@ export class DIContainer {
 
     const scope = record?.scope ?? 'singleton'
 
+    // 可见性校验必须早于 in-flight 复用：否则 B 模块在 A 模块构建同一 token
+    // 期间调用 resolveAsync，会直接拿到 A 的 Promise，绕过 exports 隔离。
+    this.assertVisible(token, fromModule)
+
     // 同一 token 的并发异步解析只构建一次。
     // transient 的语义是「每次解析一个新实例」，因此不参与去重。
     if (scope !== 'transient') {
@@ -313,7 +378,6 @@ export class DIContainer {
       if (inflight) return inflight
     }
 
-    this.assertVisible(token, fromModule)
     const task = record?.useFactory
       ? this.buildFactoryAsync<T>(token, record, fromModule, chain)
       : this.buildInstanceAsync<T>(token, record, fromModule, chain)
@@ -586,6 +650,8 @@ export class DIContainer {
     const shell = Object.create((targetClass as any).prototype)
     return new Proxy(shell, {
       get(_target, prop) {
+        // 标记自身，供 IPC 出口把它展开成普通对象（structuredClone 不接受 Proxy）
+        if (prop === REQUEST_SCOPE_PROXY) return true
         // 防止被 `await` / `Promise.resolve()` 当成 thenable 而意外触发解析
         if (prop === 'then') return undefined
         const real = resolveReal()
@@ -596,6 +662,18 @@ export class DIContainer {
       },
       has(_target, prop) {
         return Reflect.has(resolveReal(), prop)
+      },
+      // ownKeys / getOwnPropertyDescriptor 缺一不可：没有它们，代理在
+      // Object.keys / JSON.stringify / structuredClone（Electron IPC 返回值要走
+      // 结构化克隆）眼里都是「空对象」，request-scoped 服务一旦作为返回值
+      // 直接抛 "could not be cloned"。
+      ownKeys() {
+        return Reflect.ownKeys(resolveReal())
+      },
+      getOwnPropertyDescriptor(_target, prop) {
+        const descriptor = Reflect.getOwnPropertyDescriptor(resolveReal(), prop)
+        // 一律报告为可配置：shell 上没有这些属性，非可配置会违反 Proxy invariant
+        return descriptor ? { ...descriptor, configurable: true } : undefined
       },
       getPrototypeOf() {
         return (targetClass as any).prototype
@@ -657,6 +735,16 @@ export class DIContainer {
   /** 该 token 是否已有 singleton 实例（用于「只销毁已创建实例」这类场景） */
   isInstantiated(token: Token): boolean {
     return this.singletons.has(token)
+  }
+
+  /**
+   * 该 token 的作用域；未注册的类按 singleton 处理。
+   *
+   * 供中间件预编译使用：只有 singleton 才能安全缓存实例，
+   * request / transient 必须每次请求重新解析。
+   */
+  getScope(token: Token): Scope {
+    return this.providers.get(token)?.scope ?? 'singleton'
   }
 
   /** 是否「注册过」该 token（不含未 register 的 Class 回退） */

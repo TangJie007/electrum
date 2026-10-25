@@ -1,4 +1,4 @@
-import { META } from '../constants/metadata-keys'
+import { META, ownMetadataArray } from '../constants/metadata-keys'
 import type { InjectionPoint } from './inject.decorator'
 
 export interface IpcEmitOptions {
@@ -14,7 +14,7 @@ export interface IpcEmitOptions {
  */
 export function IpcEmit(channel: string, options?: IpcEmitOptions) {
   return (_value: undefined, context: ClassFieldDecoratorContext): void => {
-    const injections = (context.metadata![META.INJECTIONS] as InjectionPoint[]) || []
+    const injections = ownMetadataArray<InjectionPoint>(context.metadata, META.INJECTIONS)
     injections.push({
       propertyKey: context.name,
       token: null,

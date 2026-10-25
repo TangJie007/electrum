@@ -1,4 +1,4 @@
-import { META } from '../constants/metadata-keys'
+import { META, ownMetadataArray } from '../constants/metadata-keys'
 
 export interface MethodMiddlewareEntry {
   method: string | symbol
@@ -12,13 +12,17 @@ function createMiddlewareDecorator(classKey: symbol, methodKey: symbol) {
       context: ClassDecoratorContext | ClassMethodDecoratorContext,
     ): void {
       if (context.kind === 'class') {
-        const existing = (context.metadata![classKey] as Function[]) || []
+        const existing = ownMetadataArray<Function>(context.metadata, classKey)
         context.metadata![classKey] = [...middlewares, ...existing]
       } else {
-        const entries = (context.metadata![methodKey] as MethodMiddlewareEntry[]) || []
-        const existing = entries.find((e) => e.method === context.name)
-        if (existing) {
-          existing.middlewares = [...middlewares, ...existing.middlewares]
+        // 写时复制：entries 可能来自父类 metadata，原地 push / 改对象会污染父类
+        const entries = ownMetadataArray<MethodMiddlewareEntry>(context.metadata, methodKey)
+        const index = entries.findIndex((e) => e.method === context.name)
+        if (index >= 0) {
+          entries[index] = {
+            method: context.name,
+            middlewares: [...middlewares, ...entries[index].middlewares],
+          }
         } else {
           entries.push({ method: context.name, middlewares: [...middlewares] })
         }

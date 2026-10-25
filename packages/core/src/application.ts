@@ -14,7 +14,7 @@ import type { Plugin } from './plugin/plugin.interface'
  *
  * 职责：持有 DI / 管道 / 窗口等组件，在 start() 中按固定顺序：
  * 扫描模块 → 等 Electron ready → 建窗口 → 绑 IPC/App 事件 → 跑生命周期钩子。
- * 
+ *
  */
 export class Application {
   /** 全局 DI 容器：注册 Provider、resolve Controller、属性注入 */
@@ -39,19 +39,30 @@ export class Application {
   private lifecycle?: LifecycleManager
 
   private plugins: Plugin[] = []
+  private readyPlugins = new Set<Plugin>()
   private logger = new Logger('Application')
   private started = false
-  private shuttingDown = false
+  /** 正在启动：并发调用 start() 复用同一个 Promise，避免重复扫描 / 重复挂 IPC */
+  private starting?: Promise<this>
+  /** 正在 / 已经关闭：shutdown 只跑一次 */
+  private shutdownPromise?: Promise<void>
+  private closed = false
+  private quitHookInstalled = false
+  private shutdownDone = false
 
   /**
    * @param rootModule 根模块类（须有 @Module），一般是 AppModule
    */
   constructor(private rootModule: Function) {}
 
-  /** 注册插件：立刻调用 install；ready 在 start() 生命周期之后触发 */
+  /**
+   * 注册插件：立刻调用 install；ready 在 start() 生命周期之后触发。
+   * 若 `start()` 之后再注册，install 立即执行且 ready 会补跑一次。
+   */
   use(plugin: Plugin): this {
     this.plugins.push(plugin)
     plugin.install(this)
+    if (this.started) void this.runPluginReady(plugin)
     return this
   }
 
@@ -64,7 +75,7 @@ export class Application {
   /** 全局 Guard：所有 IPC 通道执行前校验 */
   useGlobalGuards(...guards: Function[]): this {
     this.pipeline.useGlobalGuards(...guards)
-    return this 
+    return this
   }
 
   /** 全局 Pipe：变换 Handle 的第一个业务参数 */
@@ -98,69 +109,160 @@ export class Application {
   }
 
   /**
-   * 启动应用（幂等：已启动则直接返回）。
+   * 启动应用（幂等）。
    *
    * 顺序要点：必须先 WindowManager.initialize，再 IpcBridge.registerAll。
    * 因为注册 IPC 时会 resolve Controller，其上可能有 @WindowRef，窗必须已存在。
+   *
+   * 任一步失败都会回滚（拆已挂的监听、销毁已建窗口、重置容器），
+   * 避免「第二次 start() 出现 Attempted to register a second handler」。
    */
   async start(): Promise<this> {
-    if (this.started) return this
-
-    // 1. 递归扫描 @Module 树，把 providers / controllers 注册进 DI
-    const scanner = new ModuleScanner(this.container)
-    this.scannedModules = scanner.scan(this.rootModule)
-
-    // 2. 等待 Electron 主进程就绪
-    await electronApp.whenReady()
-
-    // 3. 创建声明式窗口，并 setWindowProvider / setWindowSender，供 @WindowRef / @IpcEmit
-    await this.windowManager.initialize(this.scannedModules)
-    this.container.setWindowSender((target, channel, ...args) => {
-      if (target === 'broadcast') this.windowManager.broadcast(channel, ...args)
-      else this.windowManager.sendTo(target, channel, ...args)
-    })
-
-    // 4. 解析各 Controller（异步路径），按 prefix:channel 绑定 ipcMain.handle / on
-    this.ipcBridge = new IpcBridge(this.container, this.scannedModules, this.pipeline)
-    await this.ipcBridge.registerAll()
-
-    // 5. 绑定 @AppEvent 到 app.on
-    this.eventBridge = new EventBridge(this.container, this.scannedModules)
-    await this.eventBridge.registerAll()
-
-    // 6. 生命周期：先模块初始化，再应用就绪
-    this.lifecycle = new LifecycleManager(this.container, this.scannedModules)
-    await this.lifecycle.runHook('onModuleInit')
-    await this.lifecycle.runHook('onAppReady')
-
-    // 7. 插件 ready（此时 IPC / 窗口均已可用）
-    for (const plugin of this.plugins) {
-      await plugin.ready?.(this)
+    if (this.closed) {
+      throw new Error(
+        'Application has been shut down and cannot be started again. Create a new Application instance.',
+      )
     }
+    if (this.started) return this
+    if (this.starting) return this.starting
 
-    // 8. 退出时走 shutdown（插件 destroy → onModuleDestroy → 卸 IPC）
-    electronApp.on('before-quit', () => {
-      void this.shutdown()
-    })
-
-    this.started = true
-    this.logger.log('Application started')
-    return this
+    const starting = this.bootstrap()
+    this.starting = starting
+    try {
+      return await starting
+    } finally {
+      if (this.starting === starting) this.starting = undefined
+    }
   }
 
-  /** 应用退出清理（幂等：重复调用直接返回） */
-  private async shutdown(): Promise<void> {
-    if (this.shuttingDown) return
-    this.shuttingDown = true
+  private async bootstrap(): Promise<this> {
+    try {
+      // 1. 递归扫描 @Module 树，把 providers / controllers 注册进 DI
+      const scanner = new ModuleScanner(this.container)
+      this.scannedModules = scanner.scan(this.rootModule)
+
+      // 2. 等待 Electron 主进程就绪
+      await electronApp.whenReady()
+
+      // 3. 创建声明式窗口，并 setWindowProvider / setWindowSender，供 @WindowRef / @IpcEmit
+      await this.windowManager.initialize(this.scannedModules)
+      this.container.setWindowSender((target, channel, ...args) => {
+        if (target === 'broadcast') this.windowManager.broadcast(channel, ...args)
+        else this.windowManager.sendTo(target, channel, ...args)
+      })
+
+      // 4. 解析各 Controller（异步路径），按 prefix:channel 绑定 ipcMain.handle / on
+      this.ipcBridge = new IpcBridge(this.container, this.scannedModules, this.pipeline)
+      await this.ipcBridge.registerAll()
+
+      // 5. 绑定 @AppEvent 到 app.on
+      this.eventBridge = new EventBridge(this.container, this.scannedModules)
+      await this.eventBridge.registerAll()
+
+      // 6. 生命周期：先模块初始化，再应用就绪
+      this.lifecycle = new LifecycleManager(this.container, this.scannedModules)
+      await this.lifecycle.runHook('onModuleInit')
+      await this.lifecycle.runHook('onAppReady')
+
+      // 7. 插件 ready（此时 IPC / 窗口均已可用）
+      for (const plugin of this.plugins) await this.runPluginReady(plugin)
+
+      // 8. 退出时走 shutdown，并等它跑完再真正退出
+      this.installQuitHook()
+
+      this.started = true
+      this.logger.log('Application started')
+      return this
+    } catch (err) {
+      await this.rollbackStart(err)
+      throw err
+    }
+  }
+
+  /**
+   * 应用退出清理（幂等）。
+   *
+   * 顺序：插件 destroy → onModuleDestroy → 销毁实例 → 拆 IPC / AppEvent → 关窗口。
+   * 返回值可直接 await，`before-quit` 与手动调用共用同一次执行。
+   */
+  async shutdown(): Promise<void> {
+    if (this.shutdownPromise) return this.shutdownPromise
+    this.shutdownPromise = this.teardown()
+    return this.shutdownPromise
+  }
+
+  private async teardown(): Promise<void> {
+    if (this.closed) return
+    this.closed = true
 
     for (const plugin of this.plugins) {
-      await plugin.destroy?.(this)
+      try {
+        await plugin.destroy?.(this)
+      } catch (err: any) {
+        this.logger.error(`Plugin destroy failed: ${err?.message || err}`)
+      }
     }
+
     await this.lifecycle?.runHook('onModuleDestroy')
     // 钩子跑完后再销毁实例（关闭连接 / 定时器），最后才拆桥接
     await this.container.dispose()
     this.ipcBridge?.unregisterAll()
     this.eventBridge?.unregisterAll()
+    this.windowManager.destroyAll()
+  }
+
+  private async runPluginReady(plugin: Plugin): Promise<void> {
+    if (this.readyPlugins.has(plugin)) return
+    this.readyPlugins.add(plugin)
+    try {
+      await plugin.ready?.(this)
+    } catch (err: any) {
+      this.logger.error(`Plugin ready failed: ${err?.message || err}`)
+    }
+  }
+
+  /**
+   * `before-quit` 必须 preventDefault 后 await 清理再退出：
+   * Electron 不会等待一个返回值是 Promise 的监听器，直接 quit 会让
+   * 连接池 / 文件句柄在半路被砍掉。
+   */
+  private installQuitHook(): void {
+    if (this.quitHookInstalled) return
+    this.quitHookInstalled = true
+
+    electronApp.on('before-quit', (event?: { preventDefault?: () => void }) => {
+      if (this.shutdownDone) return // 清理已完成，放行真正的退出
+      event?.preventDefault?.()
+
+      void this.shutdown().finally(() => {
+        this.shutdownDone = true
+        electronApp.quit()
+      })
+    })
+  }
+
+  /** start 失败时把副作用还原，使修复配置后可以重新 start() */
+  private async rollbackStart(err: unknown): Promise<void> {
+    this.logger.error(
+      `Application start failed, rolling back: ${(err as any)?.message || String(err)}`,
+    )
+
+    this.ipcBridge?.unregisterAll()
+    this.eventBridge?.unregisterAll()
+    this.ipcBridge = undefined
+    this.eventBridge = undefined
+
+    try {
+      await this.container.dispose()
+    } catch (disposeError: any) {
+      this.logger.error(`Rollback dispose failed: ${disposeError?.message || disposeError}`)
+    }
+    // dispose 会标记 unavailable，clear 负责把容器恢复成可重新注册的初始态
+    this.container.clear()
+
+    this.windowManager.destroyAll()
+    this.lifecycle = undefined
+    this.scannedModules = []
   }
 }
 

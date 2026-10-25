@@ -46,6 +46,7 @@ export {
   UsePipes,
   UseInterceptors,
   UseFilters,
+  Catch,
   ElectronException,
   NotFoundException,
   ForbiddenException,

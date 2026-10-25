@@ -62,9 +62,61 @@ app.useGlobalFilters(GlobalExceptionFilter)
 ```
 
 You can also attach `@UseFilters(...)` at class or method level.  
-**Execution priority is the reverse of Guard: method → class → global** (more specific handlers first); the pipeline returns on the first matching Filter.
+**Execution priority is the reverse of Guard: method → class → global** (more specific handlers first); the first Filter whose `@Catch()` type matches runs and returns.
 
-With no Filter registered, the framework falls back to default `INTERNAL` / `UNKNOWN` responses.
+With no matching Filter, the framework falls back to default `INTERNAL` / `UNKNOWN` responses.
+
+## Declaring handled types with `@Catch()`
+
+```ts
+import {
+  Catch,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  ValidationException,
+} from '@electrum/common'
+
+@Injectable()
+@Catch(NotFoundException)
+export class NotFoundFilter implements ExceptionFilter {
+  catch(exception: NotFoundException): IpcErrorResponse {
+    return { __error: true, code: 'NOT_FOUND', message: exception.message }
+  }
+}
+
+@Injectable()
+@Catch(ValidationException, ForbiddenException)
+export class ClientErrorFilter implements ExceptionFilter {
+  catch(exception: ValidationException | ForbiddenException): IpcErrorResponse {
+    return exception.toJSON()
+  }
+}
+
+@Injectable()
+@Catch()                    // empty list = catch-all fallback
+export class FallbackFilter implements ExceptionFilter {
+  catch(exception: unknown, ctx: IpcContext): IpcErrorResponse {
+    return { __error: true, code: 'INTERNAL', message: `[${ctx.channel}] ${String(exception)}` }
+  }
+}
+```
+
+| Form | Matches |
+|------|---------|
+| `@Catch(NotFoundException)` | `instanceof`, subclasses included |
+| `@Catch(A, B)` | either type |
+| `@Catch()` | catch-all |
+| no `@Catch` | catch-all (backward compatible) |
+
+Dispatch rules:
+
+1. Candidates are ordered method → class → global; each one is checked with `instanceof` against `META.CATCH`.
+2. **The first match runs and returns**; non-matching Filters are skipped, so "method-level handles `ValidationException` only + global fallback" works together.
+3. If a Filter itself throws, the error is logged and matching continues; the pipeline finally falls back to built-in serialization.
+4. Primitive throws (`throw 'oops'`, `null`) can only be caught by a catch-all Filter.
+
+> Note: `@Catch` only affects the regular `@IpcHandle` pipeline. `@IpcOn` goes through `executeGuardOnly` and never runs Filters (errors are only logged).
 
 ## Use Cases
 

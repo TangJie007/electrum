@@ -221,18 +221,25 @@ for (const pipeClass of allPipes) {
 
 多参数的 IPC 方法只有 `args[0]` 会被变换。
 
-**② Filter 命中第一个即返回**
+**② Filter 按 `@Catch()` 类型命中，第一个匹配即返回**
 
 ```ts
-for (const filterClass of allFilters) {
-  const filter = this.container.resolve(filterClass) as ExceptionFilter
-  return filter.catch(exception, context)   // ← 循环体里 return
+for (const planned of filters) {
+  if (!matches(exception, planned.classRef)) continue   // 读 META.CATCH，instanceof 判断
+  try {
+    return await filter.catch(exception, context)       // ← 第一个命中就 return
+  } catch (filterError) {
+    logger.error(...)                                   // Filter 自身抛错 → 继续找下一个
+  }
 }
 ```
 
-循环第一次迭代就 `return`，所以**后续 Filter 不会被执行**，也不存在「Filter 链」的降级传递。想兜底就在那一个 Filter 内部自己处理。
+- `@Catch(NotFoundException)` 只接管 `NotFoundException` 及其子类；
+- `@Catch()`（空列表）或不写 `@Catch` 视为 **catch-all**；
+- 顺序仍为 method → class → global，但只有类型命中的那个会执行；类型不匹配会被跳过，因此可以「方法级专门处理 + 全局兜底」共存；
+- Filter 自己抛错时记日志并继续向后匹配，**不中断**分派。
 
-兜底顺序（无任何 Filter 注册时）：
+无 Filter 命中或全部抛错时回落到内置序列化：
 `ElectronException` → `toJSON()`；普通 `Error` → `{ code: 'INTERNAL' }`；其它 → `{ code: 'UNKNOWN' }`。`stack` 仅在 `NODE_ENV` 含 `dev` 时带上。
 
 ### 8.3 executeGuardOnly（`@IpcOn` 走这条）
@@ -250,26 +257,29 @@ initialize(modules)
        autoCreate !== false → createWindow(config)
 
 createWindow(config)
+  ├─ 同名窗口仍存活 → 直接复用并 warn    ← 避免旧窗口失去引用后泄漏
   ├─ new BrowserWindow(config.options)
   ├─ isDev = ELECTRON_RENDERER_URL || NODE_ENV 含 'dev'
   │    isDev → loadURL(ELECTRON_RENDERER_URL || devUrl)
   │             ELECTRON_OPEN_DEVTOOLS === '1' 才开 DevTools
   │    否则  → loadFile(prodFile)
   ├─ windows.set(name, win)
-  ├─ once('ready-to-show') → show()          ← 避免白屏闪烁
+  ├─ once('ready-to-show') → show()          ← 避免白屏闪烁；config.options.show === false 时不 show
   └─ on('closed') → windows.delete(name)     ← 关窗即出表，防泄漏
 ```
 
-推送侧两个方法都做了 `isDestroyed()` 保护：
+推送侧两个方法都做了 `isDestroyed()` 保护，并在窗口仍处于加载中时把消息排队到 `did-finish-load`，避免新窗口丢首条消息：
 
 ```ts
 sendTo(name, channel, ...args)  // 单窗口
 broadcast(channel, ...args)     // 所有窗口
 ```
 
+`shutdown()` 与启动失败回滚都会调 `destroyAll()` 关闭并清空所有窗口。
+
 ## 10. 生命周期与关闭
 
-`LifecycleManager.runHook()` 遍历所有 `controllers + providers`，`container.resolve` 后挑出实现该钩子的实例，用 `Promise.allSettled` 并发执行，**单个失败只记日志不中断**其余钩子。
+`LifecycleManager.runHook()` 遍历所有 `controllers + providers`，`container.resolve` 后挑出实现该钩子的实例，**串行** (`await` + `try/catch`) 执行：单个实例抛错只记日志、不中断其余钩子。串行是为了让有依赖关系的初始化/销毁顺序可预测；`onModuleDestroy` 额外按收集顺序**逆序**执行，符合资源后进先出。
 
 | 钩子 | 时机 |
 |------|------|
@@ -277,7 +287,11 @@ broadcast(channel, ...args)     // 所有窗口
 | `onAppReady` | `onModuleInit` 全部完成后 |
 | `onModuleDestroy` | `before-quit` → `shutdown()` |
 
-`shutdown()` 幂等（`shuttingDown` 标志），收尾顺序保证资源不泄漏：插件 `destroy` → `onModuleDestroy` → 卸 IPC → 卸 app 事件。
+`shutdown()` 幂等（`shutdownPromise` 复用同一次执行），收尾顺序保证资源不泄漏：插件 `destroy` → `onModuleDestroy`（逆序） → `container.dispose()` → 卸 IPC → 卸 app 事件 → `destroyAll()` 关窗口。
+
+`before-quit` 里先 `event.preventDefault()`，`await shutdown()` 完成后置 `shutdownDone` 再调 `app.quit()` 放行——Electron 不会等待返回 Promise 的监听器，否则连接池 / 文件句柄可能被半路砍掉。
+
+`start()` 失败会 `rollbackStart()`：拆已挂的 IPC / app 事件、`container.dispose()` + `clear()`、`destroyAll()` 关掉已建窗口，因此修正配置后可以重新 `start()`；已经 `shutdown()` 的实例不可重启，需要新建 `Application`。
 
 ## 11. 异常跨进程协议
 

@@ -36,6 +36,28 @@ export class WindowModule {}
 启动时：`autoCreate !== false` 的窗口会自动创建。  
 开发环境优先加载 `ELECTRON_RENDERER_URL` 或 `devUrl`；生产加载 `prodFile`。
 
+`options.show` 被**尊重**：框架默认在 `ready-to-show` 时 `show()`（避免白屏闪烁），但写了 `show: false` 就表示「由业务自己决定何时显示」，此时需要自己 `win.show()`，例如：
+
+```ts
+@Injectable()
+export class WindowService implements OnAppReady {
+  @WindowRef('main')
+  private mainWin!: BrowserWindow
+
+  onAppReady(): void {
+    const win = this.mainWin
+    if (!win || win.isDestroyed()) return
+    if (win.webContents.isLoadingMainFrame()) {
+      win.once('ready-to-show', () => !win.isDestroyed() && win.show())
+    } else {
+      win.show()
+    }
+  }
+}
+```
+
+同名窗口重复 `createWindow` 会复用仍存活的实例（并打 warn），不会覆盖 Map 导致旧窗口泄漏。
+
 ## 注入窗口
 
 ```ts
@@ -66,8 +88,8 @@ const wm = app.getWindowManager()
 |------|------|
 | `getWindow(name)` | 取单个窗口（默认 `main`） |
 | `getAllWindows()` | 当前所有由管理器登记的窗口 |
-| `sendTo(name, channel, ...args)` | 向指定窗口 `webContents.send` |
-| `broadcast(channel, ...args)` | 向所有存活窗口广播 |
+| `sendTo(name, channel, ...args)` | 向指定窗口 `webContents.send`（加载中会排队到 `did-finish-load`） |
+| `broadcast(channel, ...args)` | 向所有存活窗口广播（同样排队，不会丢首条消息） |
 
 ### `getWindow` — 取窗并操作原生 API
 

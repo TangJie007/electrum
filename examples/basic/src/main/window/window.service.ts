@@ -1,11 +1,19 @@
 import { join } from 'node:path'
 import { BrowserWindow, type BrowserWindowConstructorOptions } from 'electron'
-import { Injectable, Logger } from '@electrum/common'
+import { Injectable, Logger, WindowRef, type OnAppReady } from '@electrum/common'
 
 @Injectable()
-export class WindowService {
+export class WindowService implements OnAppReady {
   private logger = new Logger('WindowService')
   private childSeq = 0
+
+  /** 声明式主窗口：配置里写了 `show: false`，由这里择机显示 */
+  @WindowRef('main')
+  private mainWin!: BrowserWindow
+
+  onAppReady(): void {
+    this.showWhenReady(this.mainWin)
+  }
 
   private sharedOptions(): BrowserWindowConstructorOptions {
     return {
@@ -63,9 +71,7 @@ export class WindowService {
 
     const params = new URLSearchParams({ view: 'child', title, ...query })
     this.load(win, params)
-    win.once('ready-to-show', () => {
-      if (!win.isDestroyed()) win.show()
-    })
+    this.showWhenReady(win)
     win.on('closed', () => {
       this.logger.log(`Child window #${id} closed`)
     })
@@ -91,6 +97,18 @@ export class WindowService {
     if (win.isMinimized()) win.restore()
     win.focus()
     return true
+  }
+
+  /** 等首帧就绪再显示，避免白屏闪烁；已加载完则立即显示 */
+  private showWhenReady(win?: BrowserWindow): void {
+    if (!win || win.isDestroyed()) return
+    if (win.webContents.isLoadingMainFrame()) {
+      win.once('ready-to-show', () => {
+        if (!win.isDestroyed()) win.show()
+      })
+      return
+    }
+    win.show()
   }
 
   private load(win: BrowserWindow, params: URLSearchParams): void {

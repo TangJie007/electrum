@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import { app as electronApp, ipcMain } from 'electron'
 import { META, readMetadata, Logger, type IpcHandlerEntry } from '@electrum/common'
 import type { DIContainer } from '../di/container'
 import type { ScannedModule } from '../module/scanner'
@@ -17,8 +17,22 @@ import type { MiddlewarePipeline } from '../middleware/pipeline'
  */
 export class IpcBridge {
   private logger = new Logger('IpcBridge')
-  /** 已注册 channel，用于去重与 `unregisterAll` 时按名拆除 */
-  private registeredChannels = new Set<string>()
+  /**
+   * 已注册 channel 的明细：用于去重，以及 `unregisterAll` 时**精确**拆除。
+   *
+   * `@IpcOn` 必须保存 listener 引用后 `removeListener`，不能 `removeAllListeners`，
+   * 否则会把业务自己在同一 channel 上挂的监听一起干掉。
+   */
+  private registered = new Map<
+    string,
+    { handle: boolean; listeners: Array<(...args: any[]) => void> }
+  >()
+
+  /** 是否开发环境：以「未打包」为准，NODE_ENV 只作为补充信号 */
+  private isDev(): boolean {
+    if ((electronApp as { isPackaged?: boolean })?.isPackaged === false) return true
+    return !!process.env.NODE_ENV?.includes('dev')
+  }
 
   constructor(
     private container: DIContainer,
@@ -38,7 +52,7 @@ export class IpcBridge {
         await this.registerController(controllerClass, mod.moduleClass)
       }
     }
-    this.logger.log(`Registered ${this.registeredChannels.size} IPC channels`)
+    this.logger.log(`Registered ${this.registered.size} IPC channels`)
   }
 
   /**
@@ -54,11 +68,12 @@ export class IpcBridge {
    */
   unregisterAll(): void {
     // 只拆本桥接登记过的 channel，不碰应用里其它地方挂的 ipcMain 监听
-    for (const channel of this.registeredChannels) {
-      ipcMain.removeHandler(channel) // @IpcHandle → ipcMain.handle
-      ipcMain.removeAllListeners(channel) // @IpcOn → ipcMain.on
+    for (const [channel, entry] of this.registered) {
+      if (entry.handle) ipcMain.removeHandler(channel) // @IpcHandle → ipcMain.handle
+      // @IpcOn：逐个移除自己挂的 listener，保留其它来源的同名监听
+      for (const listener of entry.listeners) ipcMain.removeListener(channel, listener as any)
     }
-    this.registeredChannels.clear()
+    this.registered.clear()
   }
 
   /**
@@ -87,13 +102,13 @@ export class IpcBridge {
     const handleMethods = readMetadata<IpcHandlerEntry[]>(controllerClass, META.IPC_HANDLE) || []
 
     for (const { channel, method, options } of handleMethods) {
-      // `@IpcHandle(ch, { devOnly: true })`：非开发环境跳过注册
-      if (options?.devOnly && !process.env.NODE_ENV?.includes('dev')) continue
+      // `@IpcHandle(ch, { devOnly: true })`：打包后跳过注册
+      if (options?.devOnly && !this.isDev()) continue
 
       const fullChannel = prefix ? `${prefix}:${channel}` : channel
 
       // 全局 channel 去重（跨 Controller 也不能撞名）
-      if (this.registeredChannels.has(fullChannel)) {
+      if (this.registered.has(fullChannel)) {
         this.logger.warn(`Duplicate IPC channel: ${fullChannel}, skipping`)
         continue
       }
@@ -114,7 +129,7 @@ export class IpcBridge {
         )
       })
 
-      this.registeredChannels.add(fullChannel)
+      this.registered.set(fullChannel, { handle: true, listeners: [] })
       this.logger.debug(`handle "${fullChannel}" → ${controllerClass.name}.${String(method)}`)
     }
 
@@ -124,13 +139,13 @@ export class IpcBridge {
     for (const { channel, method } of onMethods) {
       const fullChannel = prefix ? `${prefix}:${channel}` : channel
 
-      if (this.registeredChannels.has(fullChannel)) {
+      if (this.registered.has(fullChannel)) {
         this.logger.warn(`Duplicate IPC channel: ${fullChannel}, skipping`)
         continue
       }
 
       // executeGuardOnly：只跑 Guard，不跑 Interceptor；void 忽略 Promise，避免 unhandled rejection 外泄到 EventEmitter
-      ipcMain.on(fullChannel, (event, ...args) => {
+      const listener = (event: any, ...args: any[]) => {
         void this.container.runInRequestScopeAsync(() =>
           this.pipeline.executeGuardOnly({
             type: 'on',
@@ -142,9 +157,10 @@ export class IpcBridge {
             args,
           }),
         )
-      })
+      }
+      ipcMain.on(fullChannel, listener)
 
-      this.registeredChannels.add(fullChannel)
+      this.registered.set(fullChannel, { handle: false, listeners: [listener] })
       this.logger.debug(`on "${fullChannel}" → ${controllerClass.name}.${String(method)}`)
     }
   }

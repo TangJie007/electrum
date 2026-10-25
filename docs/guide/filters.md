@@ -62,9 +62,61 @@ app.useGlobalFilters(GlobalExceptionFilter)
 ```
 
 也可 `@UseFilters(...)` 挂在类或方法上。  
-**执行优先顺序与 Guard 相反：method → class → global**（更具体的先处理）；当前管线匹配到第一个 Filter 即返回。
+**执行优先顺序与 Guard 相反：method → class → global**（更具体的先处理）；按类型命中的第一个 Filter 执行并返回。
 
-无任何 Filter 时，框架有默认 `INTERNAL` / `UNKNOWN` 回退。
+无任何 Filter 命中时，框架有默认 `INTERNAL` / `UNKNOWN` 回退。
+
+## 用 `@Catch()` 声明接管哪些异常
+
+```ts
+import {
+  Catch,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  ValidationException,
+} from '@electrum/common'
+
+@Injectable()
+@Catch(NotFoundException)
+export class NotFoundFilter implements ExceptionFilter {
+  catch(exception: NotFoundException): IpcErrorResponse {
+    return { __error: true, code: 'NOT_FOUND', message: exception.message }
+  }
+}
+
+@Injectable()
+@Catch(ValidationException, ForbiddenException)
+export class ClientErrorFilter implements ExceptionFilter {
+  catch(exception: ValidationException | ForbiddenException): IpcErrorResponse {
+    return exception.toJSON()
+  }
+}
+
+@Injectable()
+@Catch()                    // 空列表 = catch-all，兜底
+export class FallbackFilter implements ExceptionFilter {
+  catch(exception: unknown, ctx: IpcContext): IpcErrorResponse {
+    return { __error: true, code: 'INTERNAL', message: `[${ctx.channel}] ${String(exception)}` }
+  }
+}
+```
+
+| 写法 | 匹配范围 |
+|------|----------|
+| `@Catch(NotFoundException)` | `instanceof` 命中，含子类 |
+| `@Catch(A, B)` | 命中任一即可 |
+| `@Catch()` | catch-all |
+| 不写 `@Catch` | catch-all（向后兼容） |
+
+分派规则：
+
+1. 候选顺序 method → class → global，逐个读 `META.CATCH` 做 `instanceof` 判断；
+2. **第一个命中的执行并返回**，类型不匹配的会被跳过——所以「方法级只处理 `ValidationException` + 全局兜底」可以共存；
+3. Filter 自身抛错时记 `logger.error` 并继续匹配下一个，最终回落到内置序列化；
+4. 原始值（`throw 'oops'`、`null`）只能被 catch-all 接住。
+
+> 注意：`@Catch` 只影响普通 `@IpcHandle` 这条管线。`@IpcOn` 走 `executeGuardOnly`，不执行 Filter（异常只记日志）。
 
 ## 使用场景
 

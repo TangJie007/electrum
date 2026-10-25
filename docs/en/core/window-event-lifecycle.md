@@ -20,11 +20,13 @@ Corresponding source:
 
 `createWindow`:
 
+- If a live window with the same `name` exists, reuse it (with a warning) instead of overwriting the Map entry
 - `new BrowserWindow(config.options)`
 - Development: prefer `ELECTRON_RENDERER_URL` or `config.devUrl` → `loadURL`  
 - Production: `config.prodFile` → `loadFile`  
-- `show` after `ready-to-show`  
+- `show` after `ready-to-show`, skipped when `config.options.show === false`  
 - On `closed`, remove from Map to avoid holding destroyed windows
+- `destroyAll()` closes and clears every window (used by `shutdown()` and start rollback)
 
 ### API
 
@@ -32,8 +34,8 @@ Corresponding source:
 |------|------|
 | `getWindow(name)` | Get one window; default name=`main` |
 | `getAllWindows()` | All live windows |
-| `sendTo(name, channel, ...args)` | Targeted `webContents.send` |
-| `broadcast(channel, ...args)` | Send to all non-destroyed windows |
+| `sendTo(name, channel, ...args)` | Targeted `webContents.send`; queued to `did-finish-load` while the window is still loading |
+| `broadcast(channel, ...args)` | Send to all non-destroyed windows (same load queueing) |
 
 Cross-window communication does not go through IpcBridge Controller metadata—it is a direct WindowManager capability.
 
@@ -77,7 +79,7 @@ Three hook names match interface methods:
 Execution rules:
 
 1. Collect Controllers/Providers that exist in the container **and** have the method on the instance  
-2. Call in parallel via `Promise.allSettled`  
+2. Call them **serially** (`await` + `try/catch`) in collection order; `onModuleDestroy` runs in **reverse** order  
 3. Individual failures are logged; other instances are not blocked  
 
 Nest analogy: `OnModuleInit` / `onApplicationBootstrap`, etc.—here simplified to three hooks for Electron.

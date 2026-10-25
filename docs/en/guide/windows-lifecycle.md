@@ -36,6 +36,28 @@ export class WindowModule {}
 On startup: windows with `autoCreate !== false` are created automatically.  
 In development, `ELECTRON_RENDERER_URL` or `devUrl` is loaded first; in production, `prodFile` is loaded.
 
+`options.show` is **respected**: by default the framework calls `show()` on `ready-to-show` (avoiding a white flash), but `show: false` means "the app decides when to show", so you have to call `win.show()` yourself:
+
+```ts
+@Injectable()
+export class WindowService implements OnAppReady {
+  @WindowRef('main')
+  private mainWin!: BrowserWindow
+
+  onAppReady(): void {
+    const win = this.mainWin
+    if (!win || win.isDestroyed()) return
+    if (win.webContents.isLoadingMainFrame()) {
+      win.once('ready-to-show', () => !win.isDestroyed() && win.show())
+    } else {
+      win.show()
+    }
+  }
+}
+```
+
+Calling `createWindow` again for a name that is still alive reuses the live instance (with a warning) instead of overwriting the Map and leaking the old window.
+
 ## Injecting Windows
 
 ```ts
@@ -66,8 +88,8 @@ const wm = app.getWindowManager()
 |------|------|
 | `getWindow(name)` | Get a single window (default `main`) |
 | `getAllWindows()` | All windows currently registered with the manager |
-| `sendTo(name, channel, ...args)` | `webContents.send` to a specific window |
-| `broadcast(channel, ...args)` | Broadcast to all live windows |
+| `sendTo(name, channel, ...args)` | `webContents.send` to a specific window (queued to `did-finish-load` while loading) |
+| `broadcast(channel, ...args)` | Broadcast to all live windows (also queued, so the first message is not lost) |
 
 ### `getWindow` — access a window and call native APIs
 

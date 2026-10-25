@@ -37,6 +37,7 @@ vi.mock('electron', () => ({
     handle: vi.fn(),
     on: vi.fn(),
     removeHandler: vi.fn(),
+    removeListener: vi.fn(),
     removeAllListeners: vi.fn(),
   },
   BrowserWindow: vi.fn().mockImplementation(() => ({
@@ -46,6 +47,7 @@ vi.mock('electron', () => ({
     once: vi.fn(),
     on: vi.fn(),
     show: vi.fn(),
+    destroy: vi.fn(),
     isDestroyed: vi.fn(() => false),
   })),
 }))
@@ -108,7 +110,9 @@ describe('IpcBridge', () => {
 
     expect(ipcMain.handle).toHaveBeenCalledWith('demo:ping', expect.any(Function))
     expect(ipcMain.removeHandler).toHaveBeenCalledWith('demo:ping')
-    expect(ipcMain.removeAllListeners).toHaveBeenCalledWith('demo:ping')
+    // @IpcOn 只移除自己挂的 listener，不能用 removeAllListeners 误伤业务监听
+    expect(ipcMain.removeListener).toHaveBeenCalledWith('demo:msg', expect.any(Function))
+    expect(ipcMain.removeAllListeners).not.toHaveBeenCalled()
   })
 
   it('Handle strips event; On passes event as first argument', async () => {
@@ -133,8 +137,8 @@ describe('IpcBridge', () => {
     const onCall = vi.mocked(ipcMain.on).mock.calls.find((c) => c[0] === 'demo:msg')
     expect(onCall).toBeTruthy()
     onCall![1](event as any, 'x')
-    // allow microtask for void executeGuardOnly
-    await Promise.resolve()
+    // executeGuardOnly 是 fire-and-forget：等一拍宏任务，确保首次编译计划 + 调用完成
+    await new Promise((resolve) => setTimeout(resolve, 0))
     expect(instance.lastOnArgs).toEqual([event, 'x'])
   })
 

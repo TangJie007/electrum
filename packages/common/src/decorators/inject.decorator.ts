@@ -1,4 +1,4 @@
-import { META } from '../constants/metadata-keys'
+import { META, ownMetadataArray } from '../constants/metadata-keys'
 
 /**
  * 属性注入点描述（写入 `META.INJECTIONS`）。
@@ -44,7 +44,7 @@ export interface InjectionPoint {
  */
 export function Inject(token: any) {
   return (_value: undefined, context: ClassFieldDecoratorContext): void => {
-    const injections = (context.metadata![META.INJECTIONS] as InjectionPoint[]) || []
+    const injections = ownMetadataArray<InjectionPoint>(context.metadata, META.INJECTIONS)
     injections.push({
       propertyKey: context.name,
       token,
@@ -66,12 +66,12 @@ export function Inject(token: any) {
  */
 export function Optional() {
   return (_value: undefined, context: ClassFieldDecoratorContext): void => {
-    const injections = (context.metadata![META.INJECTIONS] as InjectionPoint[]) || []
+    const injections = ownMetadataArray<InjectionPoint>(context.metadata, META.INJECTIONS)
     const last = injections[injections.length - 1]
     if (last && last.propertyKey === context.name) {
-      last.type = 'optional'
-      last.optional = true
+      // 替换而非原地修改：last 可能来自父类 metadata（继承来的同一个对象）
+      injections[injections.length - 1] = { ...last, type: 'optional', optional: true }
+      context.metadata![META.INJECTIONS] = injections
     }
-    context.metadata![META.INJECTIONS] = injections
   }
 }

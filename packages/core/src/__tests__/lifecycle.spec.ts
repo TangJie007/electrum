@@ -42,7 +42,7 @@ class Beta {
 }
 
 describe('LifecycleManager', () => {
-  it('runs hooks in parallel across providers that implement them', async () => {
+  it('runs hooks serially and reports failures without aborting the chain', async () => {
     const container = new DIContainer()
     container.register(Alpha, { useClass: Alpha })
     container.register(Beta, { useClass: Beta })

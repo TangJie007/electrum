@@ -12,17 +12,22 @@ export class LifecycleManager {
     private scannedModules: ScannedModule[],
   ) {}
 
+  /**
+   * 按顺序执行钩子。
+   *
+   * 必须**串行**：模块间常有隐式顺序（A 先建连接、B 再用），并发会让
+   * `onModuleInit` 变成竞态。销毁时再反过来 —— 后初始化（依赖方）先销毁。
+   * 单个模块抛错只记录，不打断其余模块。
+   */
   async runHook(hook: LifecycleHook): Promise<void> {
     const targets = await this.collectTargets(hook)
+    const ordered = hook === 'onModuleDestroy' ? [...targets].reverse() : targets
 
-    const results = await Promise.allSettled(
-      targets.map(({ name, instance }) => Promise.resolve(instance[hook]()).then(() => name)),
-    )
-
-    for (let i = 0; i < results.length; i++) {
-      const result = results[i]
-      if (result.status === 'rejected') {
-        this.logger.error(`${hook} failed for ${targets[i].name}: ${result.reason}`)
+    for (const { name, instance } of ordered) {
+      try {
+        await instance[hook]()
+      } catch (err: any) {
+        this.logger.error(`${hook} failed for ${name}: ${err?.message || err}`)
       }
     }
   }

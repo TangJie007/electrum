@@ -38,7 +38,7 @@ specs/ feature slices
 | Window management | Declarative window creation & DI integration | `window/manager.ts` | ✅ Mostly done | Create windows before resolving `@WindowRef` |
 | Window management | Cross-window communication | `window/manager.ts` | ✅ Mostly done | `sendTo` / `broadcast` |
 | Event system | EventBridge binds AppEvent | `bridge/event-bridge.ts` | ✅ Mostly done | `app.on` → instance method |
-| Lifecycle | Three hooks & parallel execution | `lifecycle/manager.ts` | ✅ Mostly done | Parallel via `allSettled` |
+| Lifecycle | Three hooks & serial execution | `lifecycle/manager.ts` | ✅ Mostly done | Serial `await`; `onModuleDestroy` reversed |
 | Lifecycle | Startup / shutdown ordering | `application.ts` | ✅ Mostly done | ready / before-quit |
 | Type generation | Renderer api.d.ts generation | `@electrum/codegen` | ✅ Done | `electrum-codegen` / `generateIpcTypes` (ts-morph) |
 | Type generation | ts-morph precise types & Preload generation | `@electrum/codegen` | ✅ Mostly done | Precise types + `--preload` script; allowlist only |

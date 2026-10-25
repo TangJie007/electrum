@@ -22,6 +22,11 @@ export class ModuleRegistry {
   private imports = new Map<Function, Set<Function>>()
   private exports = new Map<Function, Set<Token>>()
   private globals = new Set<Function>()
+  /**
+   * `canSee` 结果缓存：模块关系在扫描结束后不再变化，
+   * 而每次属性注入都会问一遍「A 能不能看见 B 的 X」。
+   */
+  private canSeeCache = new Map<Function, Map<Function, Map<Token, boolean>>>()
 
   /**
    * 登记一个模块的导入 / 导出关系。
@@ -33,6 +38,8 @@ export class ModuleRegistry {
     // 始终登记（哪怕是空集合）：不写 exports 与空数组等价，都不对外暴露
     this.exports.set(moduleClass, new Set(metadata.exports || []))
     if (metadata.global) this.globals.add(moduleClass)
+    // 关系变化后旧结论可能失效
+    this.canSeeCache.clear()
   }
 
   /** 该模块是否被 `@Global()` 标记 */
@@ -48,6 +55,26 @@ export class ModuleRegistry {
    */
   canSee(consumer: Function, owner: Function, token: Token): boolean {
     if (consumer === owner) return true
+
+    let byOwner = this.canSeeCache.get(consumer)
+    if (!byOwner) {
+      byOwner = new Map()
+      this.canSeeCache.set(consumer, byOwner)
+    }
+    let byToken = byOwner.get(owner)
+    if (!byToken) {
+      byToken = new Map()
+      byOwner.set(owner, byToken)
+    }
+    const cached = byToken.get(token)
+    if (cached !== undefined) return cached
+
+    const visible = this.computeCanSee(consumer, owner, token)
+    byToken.set(token, visible)
+    return visible
+  }
+
+  private computeCanSee(consumer: Function, owner: Function, token: Token): boolean {
     // 无论是全局模块还是普通模块，没写进 exports 就是私有
     if (!this.isExported(owner, token, new Set())) return false
     if (this.isGlobal(owner)) return true
@@ -85,5 +112,6 @@ export class ModuleRegistry {
     this.imports.clear()
     this.exports.clear()
     this.globals.clear()
+    this.canSeeCache.clear()
   }
 }

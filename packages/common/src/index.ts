@@ -1,7 +1,12 @@
 import './polyfill'
 
 export { METADATA_READY } from './polyfill'
-export { META, readMetadata, getClassMetadata } from './constants/metadata-keys'
+export {
+  META,
+  readMetadata,
+  getClassMetadata,
+  ownMetadataArray,
+} from './constants/metadata-keys'
 
 export { Module, Global } from './decorators/module.decorator'
 export type {
@@ -42,6 +47,8 @@ export {
 export type { MethodMiddlewareEntry } from './decorators/middleware.decorator'
 
 export type { OnModuleInit, OnAppReady, OnModuleDestroy } from './lifecycle/interfaces'
+
+export { Catch } from './decorators/catch.decorator'
 
 export type { CanActivate, IpcContext } from './guards/guard.interface'
 export type { NestInterceptor } from './interceptors/interceptor.interface'
