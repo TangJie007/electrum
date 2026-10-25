@@ -49,6 +49,8 @@ export const zh: LocaleSpecificConfig<DefaultTheme.Config> = {
           text: '实现走读',
           items: [
             { text: '目录', link: '/demo/' },
+            { text: '设计原则与实现原理', link: '/demo/design-principles' },
+            { text: 'IPC 事件管理', link: '/demo/ipc-event-management' },
             { text: '从 createApp 到 start', link: '/demo/create-app-start' },
             { text: '模块扫描与注册', link: '/demo/module-scanner' },
             { text: '@Inject 注入路径', link: '/demo/inject' },
