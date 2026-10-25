@@ -50,8 +50,8 @@ Electrum 是「基于 TypeScript 5 Stage 3 原生装饰器的 Electron 主进程
 
 **职责**：对齐 NestJS 的 `@nestjs/common`。TS5 原生装饰器把元数据写进 `Symbol.metadata`，外加接口、异常与 Logger。`dependencies` 为空，peerDeps 只有 `typescript >=5.2`。
 
-**入口导出**（`src/index.ts`）：`METADATA_READY`、`META`、`readMetadata`/`getClassMetadata`/`ownMetadataArray`、11 个装饰器模块（`@Module`、`@Injectable`、`@Controller`、`@IpcHandle`/`@IpcOn`、`@Inject`/`@Optional`、`Use*` 四个中间件装饰器、`@Catch`、`@WindowDeclaration`、`@WindowRef`、`@IpcEmit`、`@AppEvent`）、4 个中间件接口、3 个生命周期接口、4 个异常类、`Logger`，`createInjectionToken()`，类型 `ModuleMetadata`/`Provider` 一族、`InjectionToken<T>`/`TypedInjectionToken<T>`。
-注意 `index.ts` 首行是 `import './polyfill'`，保证 `Symbol.metadata` 在任何装饰器求值前就绪。
+**入口导出**（`src/index.ts`）：`META`、`readMetadata`/`getClassMetadata`/`ownMetadataArray`、11 个装饰器模块（`@Module`、`@Injectable`、`@Controller`、`@IpcHandle`/`@IpcOn`、`@Inject`/`@Optional`、`Use*` 四个中间件装饰器、`@Catch`、`@WindowDeclaration`、`@WindowRef`、`@IpcEmit`、`@AppEvent`）、4 个中间件接口、3 个生命周期接口 + `LifecycleHookName`、4 个异常类、`Logger`，`createInjectionToken()`，类型 `ModuleMetadata`/`Provider` 一族、`InjectionToken<T>`/`TypedInjectionToken<T>`。
+注意 `index.ts` 首行是 `import './polyfill'`，保证 `Symbol.metadata` 在任何装饰器求值前就绪；`polyfill.ts` **只有副作用、不导出任何东西**（早期导出的 `METADATA_READY` 常量已移除，它并不表达任何状态）。
 
 ### 文件树与重要性
 
@@ -62,7 +62,7 @@ packages/common/
 ├─ dist/                                   E  tsup 单入口（src/index.ts）产物，禁止手改
 └─ src/
    ├─ index.ts                             A  包唯一公共入口；首行 import './polyfill' 不可删
-   ├─ polyfill.ts                          A  Symbol.metadata ??= Symbol.for(...)，必须最先执行
+   ├─ polyfill.ts                          A  Symbol.metadata ??= Symbol.for(...)，必须最先执行；无导出
    ├─ constants/metadata-keys.ts           A  META（含 CATCH）+ readMetadata/getClassMetadata（带 WeakMap 缓存）
    │                                          + ownMetadataArray（写时复制，避免原型链上的父类数组被子类污染）
    │                                          跨包元数据的唯一约定，11 个装饰器模块全部依赖
@@ -82,6 +82,11 @@ packages/common/
    │                                          @IpcOn（单向，只跑 Guard）
    ├─ decorators/middleware.decorator.ts   B  UseGuards/UsePipes/UseInterceptors/UseFilters
    │                                          工厂 createMiddlewareDecorator 生成，支持类级 + 方法级
+   │                                          （该工厂只服务本文件的「类级 + 方法级」双形态，
+   │                                          刻意不外提 —— 其它装饰器没有这种双形态）
+   ├─ decorators/metadata-list.ts          C  appendMetadata()：ownMetadataArray → push → 写回，三连收口；
+   │                                          6 个装饰器（ipc×2 / app-event / ipc-emit / window-ref / inject）
+   │                                          共用，避免漏掉「写回」那一步；仅供 decorators/ 内部，不导出
    ├─ error/base.exception.ts              B  ElectronException 基类（toJSON → IpcErrorResponse）
    │                                          含 NotFound / Forbidden / Validation
    ├─ guards/guard.interface.ts            B  CanActivate + IpcContext
@@ -92,12 +97,19 @@ packages/common/
    ├─ decorators/ipc-emit.decorator.ts     C  @IpcEmit，注入「调用即向渲染进程推送」的函数
    ├─ decorators/app-event.decorator.ts    C  @AppEvent(name)，绑定 electron app 生命周期事件
    ├─ lifecycle/interfaces.ts              D  纯类型：OnModuleInit / OnAppReady / OnModuleDestroy
+   │                                          + LifecycleHookName（由三个接口的键派生）。
+   │                                          **生命周期钩子的唯一契约来源**：core/src/lifecycle/manager.ts
+   │                                          必须从这里取 LifecycleHookName，不得另写字符串字面量联合
    ├─ error/error-response.ts              D  纯类型：IpcErrorResponse（__error/code/message/stack/details）
    ├─ interceptors/interceptor.interface.ts D 纯类型：NestInterceptor
    ├─ pipes/pipe.interface.ts              D  纯类型：PipeTransform + PipeContext（IpcContext + index/argCount/args）
    ├─ filters/filter.interface.ts          D  纯类型：ExceptionFilter
-   └─ __tests__/logger.spec.ts             E  唯一单测
+   ├─ __tests__/logger.spec.ts             E  日志级别过滤（含 setLevel('verbose') 的语义）
+   └─ __tests__/exception.spec.ts          E  异常族（name/toJSON/details 形状）
 ```
+**等级说明**：`logger.ts` 的级别序为 `verbose < debug < log < warn < error`（数值越小越啰嗦），
+`setLevel(x)` = 「只输出重要度不低于 x 的日志」，默认 `log`。改动 `shouldLog` 的序会影响
+`Logger.setLevel('debug')` 能否显示桥接层注册的 channel 列表。
 
 ---
 
@@ -105,7 +117,7 @@ packages/common/
 
 **职责**：对齐 `@nestjs/core`。读取 `common` 写入的 `Symbol.metadata`，建 DI 容器、扫模块树、绑定 `ipcMain`/`app.on`/`BrowserWindow`、跑中间件链与生命周期钩子。peerDeps：`electron >=20`、`typescript >=5.2`。
 
-**入口导出**（`src/index.ts`）：`Application`/`createApp`、`DIContainer`、`formatToken`、`ModuleRegistry`、`ModuleScanner`、`buildModuleGraph`/`toMermaid`、`IpcBridge`、`EventBridge`、`MiddlewarePipeline`、`LifecycleManager`、`WindowManager`、`Plugin`，类型 `Token`/`ProviderOptions`/`ExternalResolver`/`CircularStrategy`/`DependencyNode`/`ModuleGraph` 一族/`PipelineExecutionContext`，并 re-export 全部 common 公共 API（业务代码更推荐直接从 `@electrum/common` 导入装饰器）。
+**入口导出**（`src/index.ts`）：`Application`/`createApp`、`DIContainer`、`formatToken`、`ModuleRegistry`、`ModuleScanner`、`buildModuleGraph`/`toMermaid`、`IpcBridge`、`EventBridge`、`MiddlewarePipeline`、`LifecycleManager`、`WindowManager`、`Plugin`，类型 `Token`/`ProviderOptions`/`ExternalResolver`/`CircularStrategy`/`DependencyNode`/`ModuleGraph` 一族/`PipelineExecutionContext`，并 re-export 全部 common 公共 API（业务代码更推荐直接从 `@electrum/common` 导入装饰器；含 `LifecycleHookName`，不含已移除的 `METADATA_READY`）。
 
 ### 文件树与重要性
 
@@ -136,6 +148,10 @@ packages/core/
    │                                          支持 @Inject/@WindowRef/@IpcEmit/@Optional 属性注入
    │                                          （@Optional 走 canResolve：未 register 的 Class 也算可解析）
    │                                          —— 包内被引用 9 次，是全仓最高频文件
+   │                                          同步/异步两条解析路径**共用**注入分派：applyInjection 接收
+   │                                          ResolveFn 参数（resolveInternal / resolveAsyncInternal），
+   │                                          另有 targetClassOf / tryResolveCircular / cacheBuilt /
+   │                                          disposeInstances 四个共用片段 —— 改任一处即同时影响两条路径
    ├─ di/module-registry.ts                B  ModuleRegistry：模块 imports/exports/global 关系登记 +
    │                                          canSee() 可见性判定（Nest 语义：默认私有、exports 逐层
    │                                          re-export 可写 token 或模块类、@Global 免 imports 但仍需 exports）；
@@ -167,12 +183,21 @@ packages/core/
    │                                          加载中 sendTo 排队到 did-finish-load、destroyAll()
    ├─ lifecycle/manager.ts                 C  onModuleInit / onAppReady / onModuleDestroy，串行 await + try/catch
    │                                          （单个失败只记日志）；onModuleDestroy 逆序且只处理已创建实例，
-   │                                          跳过 scope === 'request' 的 Provider，同一实例钩子只跑一次
+   │                                          跳过 scope === 'request' 的 Provider，同一实例钩子只跑一次。
+   │                                          钩子名类型 LifecycleHook 取自 common 的 LifecycleHookName
    ├─ plugin/plugin.interface.ts           D  纯类型：Plugin（name/install/ready/destroy）
-   └─ __tests__/*.spec.ts                  E  11 个单测（application / di / event-bridge / integration /
+   └─ __tests__/
+      ├─ helpers/scanned-module.ts         E  stubModule()：最小 ScannedModule 构造（4 个 spec 共用）
+      ├─ helpers/electron-mock.ts          E  createBrowserWindowMock()：BrowserWindow 构造 mock
+      │                                      （4 个 spec 共用，统一字段，含 isLoadingMainFrame）。
+      │                                      vi.mock 工厂会被提升，因此只能 `await import()` 动态引入
+      └─ *.spec.ts                         E  11 个单测（application / di / event-bridge / integration /
                                               lifecycle / metadata / module-graph / pipeline /
                                               runtime-hardening / scanner / window-manager）
 ```
+**测试约定**：core 的测试**不得** import `@electrum/testing` —— testing 依赖 core，
+反向引用会形成循环 workspace 依赖（违反红线 1）。core 的 electron mock 一律走
+`__tests__/helpers/`，`@electrum/testing` 只服务业务方与 examples。
 
 ### core 内部引用热度（排除 `__tests__` 与 `dist`）
 
@@ -257,7 +282,9 @@ packages/codegen/
    ├─ ast/decorator-utils.ts               B  ts-morph AST 解析：@Controller(prefix | {prefix})、
    │                                          @IpcHandle(channel, { devOnly })
    ├─ ast/type-formatter.ts                B  类型展开器：别名/接口内联展开、union、boolean 折叠、
-   │                                          Promise 解包、>100 字符换行
+   │                                          Promise 解包、>100 字符换行。泛型别名（Result<T>）无法做
+   │                                          实参代入，输出文本形态而非退化成 unknown
+   ├─ banner.ts                             C  generatedBanner()：生成文件头注释，两个 build* 共用
    ├─ build-declaration.ts                 B  IpcApi 声明文本生成（--global 时追加 declare global Window.api）
    ├─ build-preload.ts                     B  preload 脚本文本生成（IPC_INVOKE_CHANNELS 白名单 + exposeApi()）
    │                                          —— 模板硬编码 '@electrum/preload'，见「隐性耦合点」
@@ -287,15 +314,20 @@ packages/testing/
 ├─ dist/                                   E  构建产物
 └─ src/
    ├─ index.ts                             A  包门面；额外 re-export common 的元数据辅助函数供装饰器断言
-   ├─ mock-electron.ts                     A  核心（约 5.5KB）：内存版 app / ipcMain
+   ├─ mock-electron.ts                     A  核心（约 6KB）：内存版 app / ipcMain
    │                                          （invoke·emit·handleChannels 测试钩子）/ BrowserWindow / reset()
+   │                                          ipcMain 必须提供 removeListener —— IpcBridge.unregisterAll()
+   │                                          走这条路径（不用 removeAllListeners），缺了会让
+   │                                          app.shutdown() 在测试里直接抛 TypeError
    ├─ test-container.ts                    B  对 @electrum/core 的 DIContainer 做 register/overrideProvider/
    │                                          mock/resolve/resolveAsync/has/clear 薄封装 + getContainer() 逃生口
    │                                          （overrideProvider 在 token 未注册时抛错，避免"以为覆盖其实新增"）
    ├─ __mocks__/electron.ts                E  vitest alias 目标，避免加载真 Electron
-   │                                          （仅 app / ipcMain / BrowserWindow 空壳）
+   │                                          （仅 app / ipcMain / BrowserWindow 空壳；
+   │                                          成员须与 mockElectron() 的表面保持一致）
    └─ __tests__/testing.spec.ts            E  测试期：DI mock、ipcMain handle/emit、
-                                              BrowserWindow 实例追踪、reset、readMetadata 断言
+                                              removeListener 精确卸载、BrowserWindow 实例追踪、
+                                              reset、readMetadata 断言
 ```
 
 ---

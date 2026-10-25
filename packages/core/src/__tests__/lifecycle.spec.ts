@@ -2,19 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { Injectable } from '@electrum/common'
 import { DIContainer } from '../di/container'
 import { LifecycleManager } from '../lifecycle/manager'
-import type { ScannedModule } from '../module/scanner'
-
-/** 构造最小可用的扫描结果 */
-function stubModule(overrides: Partial<ScannedModule>): ScannedModule {
-  return {
-    moduleClass: class {},
-    metadata: {},
-    controllers: [],
-    providers: [],
-    declarations: [],
-    ...overrides,
-  }
-}
+import { stubModule } from './helpers/scanned-module'
 
 @Injectable()
 class Alpha {

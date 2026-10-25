@@ -78,7 +78,18 @@ const GRAPH_PREVIEW_LIMIT = 40
 /** 注入阶段的「跳过赋值」哨兵（@Optional 且 token 不存在） */
 const SKIP = Symbol('electrum:di:skip')
 
+/** `tryResolveCircular` 的「未成环」哨兵；用 Symbol 而非 undefined，避免与值为 undefined 的 Provider 混淆 */
+const NO_CYCLE = Symbol('electrum:di:no-cycle')
+
 type WindowSender = (target: string, channel: string, ...args: any[]) => void
+
+/**
+ * 把「怎么解析一个 token」参数化，让同步 / 异步两条路径共用同一套注入分派逻辑。
+ *
+ * 同步实现传 `resolveInternal`，异步实现传 `resolveAsyncInternal`；
+ * 后者的返回值可能是 Promise，由调用方 `await`。
+ */
+type ResolveFn = (token: Token, fromModule: Function | undefined, chain: Token[]) => any
 
 /** 属性注入时的上下文 */
 interface InjectionContext {
@@ -298,37 +309,14 @@ export class DIContainer {
       )
     }
 
-    // useFactory：先 resolve inject 列表，再调工厂函数
+    // useFactory：先按 inject 顺序解析依赖，再把结果交给工厂
     if (record.useFactory) {
       // request 作用域：同一次请求内复用同一个产物（工厂也要有作用域语义）
       if (record.scope === 'request') {
         const cached = this.readRequestCache(record)
         if (cached.hit) return cached.value
       }
-
-      // 工厂的 inject 列表同样可能成环（A.inject=[B] / B.inject=[A]），
-      // 不检测就会一路递归到栈溢出，这里与类路径共用同一条解析链
-      if (chain.includes(token)) throw this.circularError(token, chain)
-
-      // Provider 的依赖要按「它自己所属模块」校验可见性，而不是按调用方
-      const owner = record.owner ?? fromModule
-      chain.push(token)
-      let instance: any
-      try {
-        const args = (record.inject || []).map((dep) =>
-          this.assertSyncValue(this.resolveInternal(dep, owner, chain), dep),
-        )
-        instance = this.assertSyncValue(record.useFactory(...args), token)
-      } finally {
-        chain.pop()
-      }
-
-      if (record.scope === 'singleton') {
-        this.singletons.set(record, instance)
-        this.track(token, instance)
-      }
-      if (record.scope === 'request') return this.writeRequestCache(record, instance)
-      return instance
+      return this.buildFactory<T>(token, record, fromModule, chain)
     }
 
     // request 作用域：返回代理，每次访问落到「当前请求」的实例
@@ -367,12 +355,8 @@ export class DIContainer {
     }
 
     // 环依赖判定必须早于 in-flight 复用：否则 A → B → A 会 await 自己的 Promise 而死锁
-    if (chain.includes(token)) {
-      if (this.circularStrategy === 'resolve' && this.singletons.has(record)) {
-        return this.singletons.get(record)
-      }
-      throw this.circularError(token, chain)
-    }
+    const circular = this.tryResolveCircular<T>(token, record, chain)
+    if (circular !== NO_CYCLE) return circular
 
     if (record.scope === 'request' && this.hasClassTarget(token, record)) {
       return this.createRequestProxy<T>(token, record, fromModule)
@@ -410,6 +394,37 @@ export class DIContainer {
     }
   }
 
+  /** 同步工厂构建：先按 inject 顺序解析依赖（必须全为同步值），再把结果交给工厂 */
+  private buildFactory<T>(
+    token: Token,
+    record: ProviderRecord,
+    fromModule: Function | undefined,
+    chain: Token[],
+  ): T {
+    // 工厂的 inject 列表同样可能成环（A.inject=[B] / B.inject=[A]），
+    // 不检测就会一路递归到栈溢出，这里与类路径共用同一条解析链
+    const circular = this.tryResolveCircular<T>(token, record, chain)
+    if (circular !== NO_CYCLE) return circular
+
+    // Provider 的依赖要按「它自己所属模块」校验可见性，而不是按调用方
+    const owner = record.owner ?? fromModule
+
+    chain.push(token)
+    let instance: any
+    try {
+      const args = (record.inject || []).map((dep) =>
+        this.assertSyncValue(this.resolveInternal(dep, owner, chain), dep),
+      )
+      instance = this.assertSyncValue(record.useFactory!(...args), token)
+    } finally {
+      chain.pop()
+    }
+
+    const built = this.cacheBuilt<T>(token, record, instance)
+    // request 作用域：异步路径由 resolveAsyncInternal 统一回写，同步路径在这里补上
+    return record.scope === 'request' ? this.writeRequestCache(record, built) : built
+  }
+
   /** 异步工厂构建：先按 inject 顺序解析依赖，再把结果交给工厂 */
   private async buildFactoryAsync<T>(
     token: Token,
@@ -426,12 +441,7 @@ export class DIContainer {
         args.push(await this.resolveAsyncInternal(dep, owner, chain))
       }
 
-      const instance = await record.useFactory!(...args)
-      if (record.scope === 'singleton') {
-        this.singletons.set(record, instance)
-        this.track(token, instance)
-      }
-      return instance
+      return this.cacheBuilt<T>(token, record, await record.useFactory!(...args))
     } finally {
       chain.pop()
     }
@@ -444,21 +454,19 @@ export class DIContainer {
     fromModule: Function | undefined,
     chain: Token[],
   ): T {
-    const targetClass = record.useClass || (typeof token === 'function' ? token : null)
+    const targetClass = this.targetClassOf(token, record)
     if (!targetClass) throw this.notFoundError(token, fromModule)
 
-    if (chain.includes(token)) {
-      // 属性注入允许「先建壳再填字段」，因此环依赖可以复用未填充完成的实例
-      if (this.circularStrategy === 'resolve' && this.singletons.has(record)) {
-        return this.singletons.get(record)
-      }
-      throw this.circularError(token, chain)
-    }
+    // 属性注入允许「先建壳再填字段」，因此环依赖可以复用未填充完成的实例
+    const circular = this.tryResolveCircular<T>(token, record, chain)
+    if (circular !== NO_CYCLE) return circular
 
     const scope = record.scope
     const owner = record.owner ?? fromModule
     // 只有开启环依赖容错时才提前入缓存，让内层能拿到未填充完成的实例
     const earlyCache = scope === 'singleton' && this.circularStrategy === 'resolve'
+    const resolve: ResolveFn = (dep, depOwner, depChain) =>
+      this.resolveInternal(dep, depOwner, depChain)
 
     chain.push(token)
     let instance: any
@@ -469,7 +477,7 @@ export class DIContainer {
 
       const { injections, ctx } = this.readInjections(targetClass, owner)
       for (const injection of injections) {
-        const value = this.applyInjection(injection, ctx, chain)
+        const value = this.applyInjection(injection, ctx, chain, resolve)
         if (value !== SKIP) instance[injection.propertyKey] = value
       }
     } catch (err) {
@@ -479,13 +487,8 @@ export class DIContainer {
       chain.pop()
     }
 
-    if (scope === 'singleton') {
-      this.singletons.set(record, instance)
-      // 容器只接管 singleton 的生命周期；transient / request 由持有者或作用域负责
-      this.track(token, instance)
-    }
-
-    return instance as T
+    // 容器只接管 singleton 的生命周期；transient / request 由持有者或作用域负责
+    return this.cacheBuilt<T>(token, record, instance)
   }
 
   /** 异步构建类实例 + 属性注入（依赖可能是异步工厂） */
@@ -495,19 +498,17 @@ export class DIContainer {
     fromModule: Function | undefined,
     chain: Token[],
   ): Promise<T> {
-    const targetClass = record.useClass || (typeof token === 'function' ? token : null)
+    const targetClass = this.targetClassOf(token, record)
     if (!targetClass) throw this.notFoundError(token, fromModule)
 
-    if (chain.includes(token)) {
-      if (this.circularStrategy === 'resolve' && this.singletons.has(record)) {
-        return this.singletons.get(record)
-      }
-      throw this.circularError(token, chain)
-    }
+    const circular = this.tryResolveCircular<T>(token, record, chain)
+    if (circular !== NO_CYCLE) return circular
 
     const scope = record.scope
     const owner = record.owner ?? fromModule
     const earlyCache = scope === 'singleton' && this.circularStrategy === 'resolve'
+    const resolve: ResolveFn = (dep, depOwner, depChain) =>
+      this.resolveAsyncInternal(dep, depOwner, depChain)
 
     chain.push(token)
     let instance: any
@@ -517,7 +518,7 @@ export class DIContainer {
 
       const { injections, ctx } = this.readInjections(targetClass, owner)
       for (const injection of injections) {
-        const value = await this.applyInjectionAsync(injection, ctx, chain)
+        const value = await this.applyInjection(injection, ctx, chain, resolve)
         if (value !== SKIP) instance[injection.propertyKey] = value
       }
     } catch (err) {
@@ -527,11 +528,48 @@ export class DIContainer {
       chain.pop()
     }
 
-    if (scope === 'singleton') {
+    // 容器只接管 singleton 的生命周期；transient / request 由持有者或作用域负责
+    return this.cacheBuilt<T>(token, record, instance)
+  }
+
+  // ───────────────────────── 构建路径共用片段 ─────────────────────────
+
+  /** 该 Provider 最终要实例化的类；取不到说明既没 `useClass`、token 也不是类 */
+  private targetClassOf(token: Token, record: ProviderRecord): Function | null {
+    return record.useClass || (typeof token === 'function' ? token : null)
+  }
+
+  /**
+   * 环依赖分派：未成环返回 `NO_CYCLE`；成环时按策略复用「未填充完成」的实例或抛错。
+   *
+   * 类路径与工厂路径共用：工厂的 `inject` 链同样会成环（A.inject=[B] / B.inject=[A]），
+   * 不检测就会一路递归到栈溢出。早期同步工厂路径只抛错、不认 `resolve` 策略，
+   * 与类路径行为不一致，这里统一掉。
+   */
+  private tryResolveCircular<T>(
+    token: Token,
+    record: ProviderRecord,
+    chain: Token[],
+  ): T | typeof NO_CYCLE {
+    if (!chain.includes(token)) return NO_CYCLE
+    if (this.circularStrategy === 'resolve' && this.singletons.has(record)) {
+      return this.singletons.get(record) as T
+    }
+    throw this.circularError(token, chain)
+  }
+
+  /**
+   * 构建完成后的收尾：singleton 入缓存并纳入销毁顺序。
+   *
+   * 四条构建路径（同步/异步 × 类/工厂）共用。transient 不入缓存；
+   * request 的回写由各自的解析入口负责（异步在 `resolveAsyncInternal`，
+   * 同步在 `buildFactory`），因为类形态的 request Provider 走的是代理路径。
+   */
+  private cacheBuilt<T>(token: Token, record: ProviderRecord, instance: any): T {
+    if (record.scope === 'singleton') {
       this.singletons.set(record, instance)
       this.track(token, instance)
     }
-
     return instance as T
   }
 
@@ -556,39 +594,18 @@ export class DIContainer {
     }
   }
 
-  private applyInjection(injection: InjectionPoint, ctx: InjectionContext, chain: Token[]): any {
-    if (injection.type === 'window') {
-      const win = this.windowProvider(injection.windowName!)
-      if (!win) {
-        throw new Error(
-          `Window "${injection.windowName}" not found for injection in ${ctx.targetName}`,
-        )
-      }
-      return win
-    }
-
-    if (injection.type === 'emit') {
-      const channel = injection.emitChannel || ''
-      const fullChannel = ctx.prefix ? `${ctx.prefix}:${channel}` : channel
-      const target = injection.emitWindow ?? ctx.controllerWindow ?? 'main'
-      return (...args: any[]) => {
-        this.windowSender(target, fullChannel, ...args)
-      }
-    }
-
-    if (injection.type === 'optional') {
-      if (!this.canResolve(injection.token)) return SKIP
-      return this.resolveInternal(injection.token, ctx.owner, chain)
-    }
-
-    return this.resolveInternal(injection.token, ctx.owner, chain)
-  }
-
-  private async applyInjectionAsync(
+  /**
+   * 解析单个注入点的值（window / emit / optional / 普通 token 四种形态）。
+   *
+   * 同步与异步路径共用这一份分派逻辑 —— 差异只在「最后一步怎么解析 token」，
+   * 因此把解析函数作为参数传入。异步路径下返回值可能是 Promise，由调用方 await。
+   */
+  private applyInjection(
     injection: InjectionPoint,
     ctx: InjectionContext,
     chain: Token[],
-  ): Promise<any> {
+    resolve: ResolveFn,
+  ): any {
     if (injection.type === 'window') {
       const win = this.windowProvider(injection.windowName!)
       if (!win) {
@@ -610,10 +627,10 @@ export class DIContainer {
 
     if (injection.type === 'optional') {
       if (!this.canResolve(injection.token)) return SKIP
-      return this.resolveAsyncInternal(injection.token, ctx.owner, chain)
+      return resolve(injection.token, ctx.owner, chain)
     }
 
-    return this.resolveAsyncInternal(injection.token, ctx.owner, chain)
+    return resolve(injection.token, ctx.owner, chain)
   }
 
   // ───────────────────────── request 作用域 ─────────────────────────
@@ -699,16 +716,7 @@ export class DIContainer {
     // 与创建顺序相反地销毁：后建的先拆，避免先拆掉被依赖的一方
     const instances = [...store.values()].reverse()
     store.clear()
-
-    for (const instance of instances) {
-      for (const disposeFn of this.pickDisposeFns(instance)) {
-        try {
-          await disposeFn()
-        } catch (err: any) {
-          this.logger.error(`Request scope dispose failed: ${err?.message || err}`)
-        }
-      }
-    }
+    await this.disposeInstances(instances)
   }
 
   // ───────────────────────────── 销毁 ─────────────────────────────
@@ -726,8 +734,22 @@ export class DIContainer {
     if (this.disposed) return
     this.disposed = true
 
-    for (let i = this.created.length - 1; i >= 0; i--) {
-      const { instance } = this.created[i]
+    // 逆创建序：后建的先拆，避免先拆掉被依赖的一方
+    await this.disposeInstances(this.created.map((entry) => entry.instance).reverse())
+
+    this.created = []
+    this.singletons.clear()
+    this.pending.clear()
+    this.implicit.clear()
+  }
+
+  /**
+   * 依次销毁一组实例，每个实例按 `onModuleDestroy` → `dispose` → `onDispose` 尝试。
+   *
+   * 单个实例抛错只记录、不打断其余销毁 —— 清理阶段抛出等于放弃后面所有资源。
+   */
+  private async disposeInstances(instances: unknown[]): Promise<void> {
+    for (const instance of instances) {
       for (const disposeFn of this.pickDisposeFns(instance)) {
         try {
           await disposeFn()
@@ -736,11 +758,6 @@ export class DIContainer {
         }
       }
     }
-
-    this.created = []
-    this.singletons.clear()
-    this.pending.clear()
-    this.implicit.clear()
   }
 
   private pickDisposeFns(instance: any): Array<() => any> {
@@ -830,8 +847,7 @@ export class DIContainer {
         if (record.useFactory) {
           for (const dep of record.inject || []) dependencies.push(formatToken(dep))
         } else {
-          const targetClass =
-            record.useClass || (typeof token === 'function' ? token : null)
+          const targetClass = this.targetClassOf(token, record)
           if (targetClass) {
             const injections =
               readMetadata<InjectionPoint[]>(targetClass, META.INJECTIONS) || []
@@ -1006,7 +1022,7 @@ export class DIContainer {
 
   /** 该 Provider 是否能落到「类」上（决定 request 作用域能否用代理代理它） */
   private hasClassTarget(token: Token, record: ProviderRecord): boolean {
-    return !!record.useClass || typeof token === 'function'
+    return this.targetClassOf(token, record) !== null
   }
 
   private assertNotDisposed(): void {

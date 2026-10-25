@@ -1,8 +1,9 @@
-import { Logger } from '@electrum/common'
+import { Logger, type LifecycleHookName } from '@electrum/common'
 import type { ScannedModule } from '../module/scanner'
 import type { DIContainer } from '../di/container'
 
-type LifecycleHook = 'onModuleInit' | 'onAppReady' | 'onModuleDestroy'
+/** 复用 common 的契约：接口改名 / 增删钩子时这里会编译报错，不会静默脱钩 */
+type LifecycleHook = LifecycleHookName
 
 export class LifecycleManager {
   private logger = new Logger('Lifecycle')

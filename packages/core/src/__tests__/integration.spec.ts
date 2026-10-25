@@ -36,34 +36,30 @@ const harness = vi.hoisted(() => ({
   appHandlers: new Map<string, (...args: any[]) => void>(),
 }))
 
-vi.mock('electron', () => ({
-  app: {
-    isPackaged: false,
-    on: (event: string, fn: (...args: any[]) => void) => harness.appHandlers.set(event, fn),
-    once: (event: string, fn: (...args: any[]) => void) => harness.appHandlers.set(event, fn),
-    removeListener: (event: string) => harness.appHandlers.delete(event),
-    whenReady: () => Promise.resolve(),
-    quit: vi.fn(),
-    getPath: () => process.cwd(),
-  },
-  ipcMain: {
-    handle: (channel: string, fn: (...args: any[]) => any) => harness.handles.set(channel, fn),
-    removeHandler: (channel: string) => harness.handles.delete(channel),
-    on: (channel: string, fn: (...args: any[]) => any) => harness.listeners.set(channel, fn),
-    removeListener: (channel: string) => harness.listeners.delete(channel),
-    removeAllListeners: vi.fn(),
-  },
-  BrowserWindow: vi.fn().mockImplementation(() => ({
-    webContents: { send: vi.fn(), openDevTools: vi.fn(), isLoadingMainFrame: () => false },
-    loadURL: vi.fn().mockResolvedValue(undefined),
-    loadFile: vi.fn().mockResolvedValue(undefined),
-    once: vi.fn(),
-    on: vi.fn(),
-    show: vi.fn(),
-    destroy: vi.fn(),
-    isDestroyed: () => false,
-  })),
-}))
+// 这个用例要真正「invoke / emit」到业务处理器，所以 ipcMain 用可运行的内存实现，
+// 而不是 spy；只有 BrowserWindow 复用公共 mock（各文件形态一致）。
+vi.mock('electron', async () => {
+  const { createBrowserWindowMock } = await import('./helpers/electron-mock')
+  return {
+    app: {
+      isPackaged: false,
+      on: (event: string, fn: (...args: any[]) => void) => harness.appHandlers.set(event, fn),
+      once: (event: string, fn: (...args: any[]) => void) => harness.appHandlers.set(event, fn),
+      removeListener: (event: string) => harness.appHandlers.delete(event),
+      whenReady: () => Promise.resolve(),
+      quit: vi.fn(),
+      getPath: () => process.cwd(),
+    },
+    ipcMain: {
+      handle: (channel: string, fn: (...args: any[]) => any) => harness.handles.set(channel, fn),
+      removeHandler: (channel: string) => harness.handles.delete(channel),
+      on: (channel: string, fn: (...args: any[]) => any) => harness.listeners.set(channel, fn),
+      removeListener: (channel: string) => harness.listeners.delete(channel),
+      removeAllListeners: vi.fn(),
+    },
+    BrowserWindow: createBrowserWindowMock(),
+  }
+})
 
 const CONFIG = createInjectionToken<{ appName: string }>('IntegrationConfig')
 const destroyed: string[] = []

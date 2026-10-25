@@ -3,33 +3,16 @@ import { BrowserWindow } from 'electron'
 import { WindowDeclaration } from '@electrum/common'
 import { DIContainer } from '../di/container'
 import { WindowManager } from '../window/manager'
+import type { MockBrowserWindow } from './helpers/electron-mock'
 
-const windows: Array<{
-  webContents: { send: ReturnType<typeof vi.fn> }
-  loadURL: ReturnType<typeof vi.fn>
-  loadFile: ReturnType<typeof vi.fn>
-  once: ReturnType<typeof vi.fn>
-  on: ReturnType<typeof vi.fn>
-  show: ReturnType<typeof vi.fn>
-  isDestroyed: ReturnType<typeof vi.fn>
-}> = []
+const h = vi.hoisted(() => ({ windows: [] as MockBrowserWindow[] }))
 
-vi.mock('electron', () => ({
-  BrowserWindow: vi.fn().mockImplementation((options: unknown) => {
-    const win = {
-      options,
-      webContents: { send: vi.fn() },
-      loadURL: vi.fn().mockResolvedValue(undefined),
-      loadFile: vi.fn().mockResolvedValue(undefined),
-      once: vi.fn(),
-      on: vi.fn(),
-      show: vi.fn(),
-      isDestroyed: vi.fn(() => false),
-    }
-    windows.push(win)
-    return win
-  }),
-}))
+vi.mock('electron', async () => {
+  const { createBrowserWindowMock } = await import('./helpers/electron-mock')
+  return { BrowserWindow: createBrowserWindowMock(h.windows) }
+})
+
+const windows = h.windows
 
 @WindowDeclaration({
   name: 'main',

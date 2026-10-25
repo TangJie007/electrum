@@ -85,6 +85,35 @@ describe('mockElectron', () => {
     expect(received).toEqual(['/tmp/a'])
   })
 
+  it('removeListener detaches exactly one listener and keeps the others', () => {
+    const seen: string[] = []
+    const first = (_event: unknown, path: unknown) => seen.push(`first:${path}`)
+    const second = (_event: unknown, path: unknown) => seen.push(`second:${path}`)
+
+    electron.ipcMain.on('demo:watch', first)
+    electron.ipcMain.on('demo:watch', second)
+
+    // IpcBridge.unregisterAll() 走的是 removeListener（不能 removeAllListeners，
+    // 否则会误伤业务自己在同一 channel 上挂的监听）—— mock 必须支持这条路径
+    electron.ipcMain.removeListener('demo:watch', first)
+    electron.ipcMain.emit('demo:watch', '/tmp/a')
+
+    expect(seen).toEqual(['second:/tmp/a'])
+    expect(electron.ipcMain.onChannels()).toEqual(['demo:watch'])
+  })
+
+  it('removeListener drops the channel once the last listener is gone', () => {
+    const listener = () => {}
+    electron.ipcMain.on('demo:watch', listener)
+    electron.ipcMain.removeListener('demo:watch', listener)
+
+    expect(electron.ipcMain.onChannels()).toEqual([])
+  })
+
+  it('removeListener on an unknown channel is a no-op', () => {
+    expect(() => electron.ipcMain.removeListener('nope', () => {})).not.toThrow()
+  })
+
   it('tracks BrowserWindow instances and supports webContents.send', () => {
     const win = new electron.BrowserWindow({ width: 800, height: 600 })
     win.webContents.send('push', 1)

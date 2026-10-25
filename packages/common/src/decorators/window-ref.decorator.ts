@@ -1,15 +1,14 @@
-import { META, ownMetadataArray } from '../constants/metadata-keys'
+import { META } from '../constants/metadata-keys'
+import { appendMetadata } from './metadata-list'
 import type { InjectionPoint } from './inject.decorator'
 
 export function WindowRef(name = 'main') {
   return (_value: undefined, context: ClassFieldDecoratorContext): void => {
-    const injections = ownMetadataArray<InjectionPoint>(context.metadata, META.INJECTIONS)
-    injections.push({
+    appendMetadata<InjectionPoint>(context.metadata!, META.INJECTIONS, {
       propertyKey: context.name,
       token: Symbol.for(`electrum:window:${name}`),
       type: 'window',
       windowName: name,
     })
-    context.metadata![META.INJECTIONS] = injections
   }
 }

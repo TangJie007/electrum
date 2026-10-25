@@ -91,6 +91,20 @@ export interface ModuleMetadata {
 }
 
 /**
+ * 合并写入 `META.MODULE`。
+ *
+ * `@Module` 与 `@Global()` 共用同一份 metadata，因此两者先后顺序无关 ——
+ * 都走这里做「读旧值 → 浅合并 → 写回」。
+ */
+function mergeModuleMetadata(
+  context: ClassDecoratorContext,
+  patch: Partial<ModuleMetadata>,
+): void {
+  const existing = (context.metadata![META.MODULE] as ModuleMetadata | undefined) ?? {}
+  context.metadata![META.MODULE] = { ...existing, ...patch }
+}
+
+/**
  * 类装饰器：把模块元数据写入 `Symbol.metadata`，供 ModuleScanner 读取。
  * 只做声明，不执行注册逻辑。
  *
@@ -99,8 +113,7 @@ export interface ModuleMetadata {
 export function Module(metadata: ModuleMetadata) {
   return (_target: Function, context: ClassDecoratorContext): void => {
     // Stage 3：写入 context.metadata，类定义完成后可经 Symbol.metadata 读出
-    const existing = (context.metadata![META.MODULE] as ModuleMetadata | undefined) ?? {}
-    context.metadata![META.MODULE] = { ...existing, ...metadata }
+    mergeModuleMetadata(context, metadata)
   }
 }
 
@@ -116,7 +129,6 @@ export function Module(metadata: ModuleMetadata) {
  */
 export function Global() {
   return (_target: Function, context: ClassDecoratorContext): void => {
-    const existing = (context.metadata![META.MODULE] as ModuleMetadata | undefined) ?? {}
-    context.metadata![META.MODULE] = { ...existing, global: true }
+    mergeModuleMetadata(context, { global: true })
   }
 }

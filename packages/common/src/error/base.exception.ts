@@ -34,11 +34,20 @@ export class ForbiddenException extends ElectronException {
   }
 }
 
+/**
+ * 参数校验失败。
+ *
+ * `errors` 只以 `details` 的形式存一份（基类第四参），不再单独存字段 ——
+ * 早期版本两者都存，`this.errors` 与 `this.details` 指向同一数据却要各维护一遍。
+ * 需要明细时读 `details`，或直接用 `errors` 这个只读视图。
+ */
 export class ValidationException extends ElectronException {
-  constructor(
-    message: string,
-    public errors: unknown[],
-  ) {
+  constructor(message: string, errors: unknown[]) {
     super(message, 'VALIDATION_ERROR', 422, errors)
+  }
+
+  /** `details` 的类型化视图（与 `details` 是同一份数据） */
+  get errors(): unknown[] {
+    return (this.details as unknown[]) ?? []
   }
 }

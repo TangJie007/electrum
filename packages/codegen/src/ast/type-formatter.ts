@@ -28,7 +28,10 @@ export function formatType(type: Type, context: Node, depth = 0): string {
         const aliasDecl = decl.asKindOrThrow(SyntaxKind.TypeAliasDeclaration)
         const typeParams = type.getAliasTypeArguments()
         if (typeParams.length > 0) {
-          return formatType(type, context, depth + 1)
+          // 泛型别名（如 Result<User>）：ts-morph 拿到的是「未代入实参」的声明类型，
+          // 无法在这里做实参替换。原实现 recursion 回同一个 type，白耗到 MAX_DEPTH
+          // 后返回 unknown —— 直接输出 `Result<User>` 文本至少是可读的。
+          return type.getText(context, TypeFormatFlags.NoTruncation)
         }
         return formatType(aliasDecl.getType(), context, depth + 1)
       }
@@ -99,6 +102,13 @@ function formatObjectType(type: Type, context: Node, depth: number): string {
   return `{\n    ${entries.join('\n    ')}\n  }`
 }
 
+/**
+ * IPC 一律走 `ipcRenderer.invoke`，返回值必然是 Promise，这里统一包一层。
+ *
+ * 处理器本身可能已声明 `Promise<T>`，此时要剥掉外层再重新包 —— 否则生成
+ * `Promise<Promise<T>>`。`getTypeArguments()` 为空说明是 `Promise` 裸类型
+ * 或其它以 "Promise<" 开头的文本，交给 `formatType` 原样输出。
+ */
 export function formatInvokeReturnType(method: MethodDeclaration, returnType: Type): string {
   const text = returnType.getText(method)
 
@@ -107,6 +117,7 @@ export function formatInvokeReturnType(method: MethodDeclaration, returnType: Ty
     if (inner) {
       return `Promise<${formatType(inner, method)}>`
     }
+    return formatType(returnType, method)
   }
 
   return `Promise<${formatType(returnType, method)}>`

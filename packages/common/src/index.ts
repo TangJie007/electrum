@@ -1,6 +1,5 @@
 import './polyfill'
 
-export { METADATA_READY } from './polyfill'
 export {
   META,
   readMetadata,
@@ -47,7 +46,12 @@ export {
 } from './decorators/middleware.decorator'
 export type { MethodMiddlewareEntry } from './decorators/middleware.decorator'
 
-export type { OnModuleInit, OnAppReady, OnModuleDestroy } from './lifecycle/interfaces'
+export type {
+  OnModuleInit,
+  OnAppReady,
+  OnModuleDestroy,
+  LifecycleHookName,
+} from './lifecycle/interfaces'
 
 export { Catch } from './decorators/catch.decorator'
 

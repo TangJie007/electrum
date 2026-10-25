@@ -13,44 +13,26 @@ import { IpcBridge } from '../bridge/ipc-bridge'
 import { MiddlewarePipeline } from '../middleware/pipeline'
 import { createApp } from '../application'
 import type { Plugin } from '../plugin/plugin.interface'
-import type { ScannedModule } from '../module/scanner'
+import { stubModule } from './helpers/scanned-module'
 
-/** 构造最小可用的扫描结果，避免每个用例重复写全部字段 */
-function stubModule(overrides: Partial<ScannedModule>): ScannedModule {
+vi.mock('electron', async () => {
+  const { createBrowserWindowMock } = await import('./helpers/electron-mock')
   return {
-    moduleClass: class {},
-    metadata: {},
-    controllers: [],
-    providers: [],
-    declarations: [],
-    ...overrides,
+    app: {
+      on: vi.fn(),
+      removeListener: vi.fn(),
+      whenReady: vi.fn().mockResolvedValue(undefined),
+    },
+    ipcMain: {
+      handle: vi.fn(),
+      on: vi.fn(),
+      removeHandler: vi.fn(),
+      removeListener: vi.fn(),
+      removeAllListeners: vi.fn(),
+    },
+    BrowserWindow: createBrowserWindowMock(),
   }
-}
-
-vi.mock('electron', () => ({
-  app: {
-    on: vi.fn(),
-    removeListener: vi.fn(),
-    whenReady: vi.fn().mockResolvedValue(undefined),
-  },
-  ipcMain: {
-    handle: vi.fn(),
-    on: vi.fn(),
-    removeHandler: vi.fn(),
-    removeListener: vi.fn(),
-    removeAllListeners: vi.fn(),
-  },
-  BrowserWindow: vi.fn().mockImplementation(() => ({
-    webContents: { send: vi.fn(), openDevTools: vi.fn() },
-    loadURL: vi.fn().mockResolvedValue(undefined),
-    loadFile: vi.fn().mockResolvedValue(undefined),
-    once: vi.fn(),
-    on: vi.fn(),
-    show: vi.fn(),
-    destroy: vi.fn(),
-    isDestroyed: vi.fn(() => false),
-  })),
-}))
+})
 
 @Injectable()
 class AppListener {

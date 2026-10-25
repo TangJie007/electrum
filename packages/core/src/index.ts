@@ -33,7 +33,6 @@ export type { Plugin } from './plugin/plugin.interface'
 
 // 为方便使用，再导出 common 的公共 API（更推荐业务代码从 @electrum/common 导入装饰器/接口）
 export {
-  METADATA_READY,
   META,
   readMetadata,
   getClassMetadata,
@@ -82,6 +81,7 @@ export type {
   OnModuleInit,
   OnAppReady,
   OnModuleDestroy,
+  LifecycleHookName,
   CanActivate,
   IpcContext,
   NestInterceptor,

@@ -13,6 +13,7 @@ export const ipcMain = {
   handle: () => undefined,
   on: () => undefined,
   removeHandler: () => undefined,
+  removeListener: () => undefined,
   removeAllListeners: () => undefined,
 }
 

@@ -1,4 +1,5 @@
-import { META, ownMetadataArray } from '../constants/metadata-keys'
+import { META } from '../constants/metadata-keys'
+import { appendMetadata } from './metadata-list'
 
 export interface AppEventEntry {
   event: string
@@ -7,8 +8,9 @@ export interface AppEventEntry {
 
 export function AppEvent(eventName: string) {
   return (_method: Function, context: ClassMethodDecoratorContext): void => {
-    const handlers = ownMetadataArray<AppEventEntry>(context.metadata, META.APP_EVENT)
-    handlers.push({ event: eventName, method: context.name })
-    context.metadata![META.APP_EVENT] = handlers
+    appendMetadata<AppEventEntry>(context.metadata!, META.APP_EVENT, {
+      event: eventName,
+      method: context.name,
+    })
   }
 }

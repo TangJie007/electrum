@@ -1,4 +1,5 @@
 import { META, ownMetadataArray } from '../constants/metadata-keys'
+import { appendMetadata } from './metadata-list'
 
 /**
  * 属性注入点描述（写入 `META.INJECTIONS`）。
@@ -44,13 +45,11 @@ export interface InjectionPoint {
  */
 export function Inject(token: any) {
   return (_value: undefined, context: ClassFieldDecoratorContext): void => {
-    const injections = ownMetadataArray<InjectionPoint>(context.metadata, META.INJECTIONS)
-    injections.push({
+    appendMetadata<InjectionPoint>(context.metadata!, META.INJECTIONS, {
       propertyKey: context.name,
       token,
       type: 'service',
     })
-    context.metadata![META.INJECTIONS] = injections
   }
 }
 

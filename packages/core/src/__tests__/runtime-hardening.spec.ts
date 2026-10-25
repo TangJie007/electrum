@@ -16,31 +16,12 @@ import { DIContainer } from '../di/container'
 import { MiddlewarePipeline } from '../middleware/pipeline'
 import { LifecycleManager } from '../lifecycle/manager'
 import { WindowManager } from '../window/manager'
-import type { ScannedModule } from '../module/scanner'
+import { stubModule } from './helpers/scanned-module'
 
-vi.mock('electron', () => ({
-  BrowserWindow: vi.fn().mockImplementation(() => ({
-    webContents: { send: vi.fn(), isLoadingMainFrame: () => false },
-    loadURL: vi.fn().mockResolvedValue(undefined),
-    loadFile: vi.fn().mockResolvedValue(undefined),
-    once: vi.fn(),
-    on: vi.fn(),
-    show: vi.fn(),
-    destroy: vi.fn(),
-    isDestroyed: vi.fn(() => false),
-  })),
-}))
-
-function stubModule(overrides: Partial<ScannedModule>): ScannedModule {
-  return {
-    moduleClass: class {},
-    metadata: {},
-    controllers: [],
-    providers: [],
-    declarations: [],
-    ...overrides,
-  }
-}
+vi.mock('electron', async () => {
+  const { createBrowserWindowMock } = await import('./helpers/electron-mock')
+  return { BrowserWindow: createBrowserWindowMock() }
+})
 
 const injectionKeys = (cls: Function): string[] =>
   ((getClassMetadata(cls)[META.INJECTIONS] as Array<{ propertyKey: string }> | undefined) || []).map(

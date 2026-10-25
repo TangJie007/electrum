@@ -17,8 +17,15 @@ export class MockBrowserWindow {
     send: (channel: string, ...args: unknown[]) => {
       this.sent.push({ channel, args })
     },
+    // WindowManager.sendTo 在窗口仍在加载时会用 once('did-finish-load') 排队消息
+    once: (_event: string, _listener: (...args: unknown[]) => void): void => {
+      this.pendingLoadListeners.push(_listener)
+    },
     id: MockBrowserWindow.instances.length + 1,
   }
+
+  /** `webContents.once` 排队的回调；测试里可手动触发以模拟加载完成 */
+  pendingLoadListeners: Array<(...args: unknown[]) => void> = []
 
   sent: Array<{ channel: string; args: unknown[] }> = []
   destroyed = false
@@ -69,6 +76,15 @@ export interface MockElectron {
     handle: (channel: string, listener: MockIpcHandler) => void
     on: (channel: string, listener: MockIpcListener) => void
     removeHandler: (channel: string) => void
+    /**
+     * 精确移除某一个 listener。
+     *
+     * `IpcBridge.unregisterAll()` 走的是这条路（不用 `removeAllListeners`，
+     * 否则会误伤业务自己在同一 channel 上挂的监听），所以 mock 必须提供它 ——
+     * 早期版本只 mock 了 `removeAllListeners`，导致 `app.shutdown()` 在测试里直接抛
+     * `ipcMain.removeListener is not a function`。
+     */
+    removeListener: (channel: string, listener: MockIpcListener) => void
     removeAllListeners: (channel?: string) => void
     /** Test helper: invoke a registered handle channel */
     invoke: (channel: string, ...args: unknown[]) => Promise<unknown>
@@ -116,6 +132,13 @@ export function mockElectron(): MockElectron {
     },
     removeHandler(channel: string): void {
       handleHandlers.delete(channel)
+    },
+    removeListener(channel: string, listener: MockIpcListener): void {
+      const set = onListeners.get(channel)
+      if (!set) return
+      set.delete(listener)
+      // 与 Electron 一致：空了就把 key 收掉，避免 onChannels() 报告幽灵频道
+      if (set.size === 0) onListeners.delete(channel)
     },
     removeAllListeners(channel?: string): void {
       if (channel) onListeners.delete(channel)
