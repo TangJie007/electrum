@@ -3,7 +3,7 @@ import './polyfill'
 export { METADATA_READY } from './polyfill'
 export { META, readMetadata, getClassMetadata } from './constants/metadata-keys'
 
-export { Module } from './decorators/module.decorator'
+export { Module, Global } from './decorators/module.decorator'
 export type {
   ModuleMetadata,
   Provider,

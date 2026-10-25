@@ -30,7 +30,7 @@ specs/ feature slices
 | DI container | Property injection resolution | `di/container.ts` | ✅ Mostly done | `new` + read `META.INJECTIONS` |
 | DI container | Scope & circular dependency detection | `di/container.ts` | ✅ Mostly done | singleton / transient + resolving chain |
 | Module system | ModuleScanner module tree scan | `module/scanner.ts` | ✅ Mostly done | DFS imports, register Providers |
-| Module system | ModuleScanner module tree scan | `module/scanner.ts` | ✅ Code present | Providers share one global container |
+| Module system | ModuleScanner module tree scan | `module/scanner.ts` | ✅ Code present | Providers share one container; visibility follows `exports` / `@Global()` |
 | IPC bridge | Controller auto-bind ipcMain | `bridge/ipc-bridge.ts` | ✅ Mostly done | `prefix:channel` → handle/on |
 | IPC bridge | IPC argument position convention | `ipc-bridge` + `pipeline` | ✅ Mostly done | Handle: no event; On: has event |
 | Middleware chain | Guard Pipe Interceptor Filter pipeline | `middleware/pipeline.ts` | ✅ Mostly done | Covered by pipeline unit tests |

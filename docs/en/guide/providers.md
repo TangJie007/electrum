@@ -208,7 +208,7 @@ export class BannerService {
 - `inject`: tokens for factory arguments; resolved before the factory runs  
 - Without `inject`, the factory is called with no args (see `APP_CONFIG` above)
 
-In `examples/basic`, `AppModule` + `ConfigService` is the full chain: `useFactory('APP_CONFIG')` → `@Inject('APP_CONFIG')` → `this.config.appName`.
+In `examples/basic`, `ConfigModule`'s `'APP_CONFIG'` factory plus `ConfigService`'s `@Inject('APP_CONFIG')` is that chain (`ConfigModule` is `@Global()`, so `FileModule` injects config without importing it).
 
 ### useFactory — async factories
 
@@ -320,7 +320,7 @@ Finer container behavior (scopes, circular dependencies, disposal order) is hand
 
 ## Diagnostics
 
-A missing provider, a forgotten `providers` entry, or an `exports` whitelist that is too tight all surface as one "provider not found" error. The container gives you two exits:
+A missing provider, a forgotten `providers` entry, or a Provider not listed in `exports` all surface as "provider not found" or "not visible". The container gives you two exits:
 
 ```ts
 const container = app.getContainer()

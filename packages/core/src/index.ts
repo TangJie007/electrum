@@ -11,6 +11,7 @@ export type {
   DependencyNode,
 } from './di/container'
 export { ModuleRegistry } from './di/module-registry'
+export type { ModuleRelations } from './di/module-registry'
 export { ModuleScanner } from './module/scanner'
 export type { ScannedModule } from './module/scanner'
 
@@ -30,6 +31,7 @@ export {
   readMetadata,
   getClassMetadata,
   Module,
+  Global,
   Injectable,
   Controller,
   IpcHandle,

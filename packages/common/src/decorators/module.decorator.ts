@@ -1,19 +1,19 @@
 import { META } from '../constants/metadata-keys'
 
 export interface ValueProvider {
-  provide: string | symbol
+  provide: InjectionToken
   useValue: any
 }
 
 export interface ClassProvider {
-  provide: any
+  provide: InjectionToken
   useClass: Function
 }
 
 export interface FactoryProvider {
-  provide: any
+  provide: InjectionToken
   useFactory: (...args: any[]) => any
-  inject?: any[]
+  inject?: InjectionToken[]
 }
 
 export type Provider =
@@ -35,21 +35,45 @@ export interface ModuleMetadata {
   /** 窗口声明类（@WindowDeclaration）；供 WindowManager 建窗 */
   declarations?: Function[]
   /**
-   * 对外暴露的 Provider token 白名单。
-   *
-   * 声明后，本模块的 Provider 只有出现在该列表里，才会被「导入本模块」的其它模块看见；
-   * 未声明（undefined）时保持旧行为——本模块 Provider 全部对外可见。
+   * 对外暴露的 Provider 白名单，语义与 Nest 一致：
+   * - 可写 Provider token，也可写整个模块类（等价于转发该模块的 exports）
+   * - 不声明 = 什么都不导出，本模块 Provider 私有
+   * - `@Global()` 标记的模块无视该限制，全局可见
    */
   exports?: InjectionToken[]
+  /**
+   * 是否全局模块（等价 Nest 的 `@Global()`）。
+   * 全局模块不需要被 imports 就能被任何模块注入。
+   */
+  global?: boolean
 }
 
 /**
  * 类装饰器：把模块元数据写入 `Symbol.metadata`，供 ModuleScanner 读取。
- * 不执行注册逻辑，只声明 imports / controllers / providers / declarations。
+ * 只做声明，不执行注册逻辑。
+ *
+ * 与 `@Global()` 共用同一份 metadata，因此两者先后顺序无关（合并写入）。
  */
 export function Module(metadata: ModuleMetadata) {
   return (_target: Function, context: ClassDecoratorContext): void => {
     // Stage 3：写入 context.metadata，类定义完成后可经 Symbol.metadata 读出
-    context.metadata![META.MODULE] = metadata
+    const existing = (context.metadata![META.MODULE] as ModuleMetadata | undefined) ?? {}
+    context.metadata![META.MODULE] = { ...existing, ...metadata }
+  }
+}
+
+/**
+ * 标记全局模块，等价 Nest 的 `@Global()`：导出对象无需被 imports 即可被任意模块注入。
+ *
+ * ```ts
+ * @Global()
+ * @Module({ providers: [ConfigService], exports: [ConfigService] })
+ * export class ConfigModule {}
+ * ```
+ */
+export function Global() {
+  return (_target: Function, context: ClassDecoratorContext): void => {
+    const existing = (context.metadata![META.MODULE] as ModuleMetadata | undefined) ?? {}
+    context.metadata![META.MODULE] = { ...existing, global: true }
   }
 }

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   Module,
+  Global,
   Injectable,
   Inject,
   Controller,
@@ -151,17 +152,111 @@ describe('ModuleScanner — exports visibility', () => {
     )
   })
 
-  it('keeps legacy behavior when exports is not declared', () => {
+  it('keeps providers private when exports is not declared', () => {
     @Module({ providers: [PrivateService] })
-    class LegacyModule {}
+    class PrivateOnlyModule {}
 
-    @Module({ imports: [LegacyModule], providers: [BadConsumer] })
-    class LegacyApp {}
+    @Module({ imports: [PrivateOnlyModule], providers: [BadConsumer] })
+    class OutsiderApp {}
 
     const container = new DIContainer()
-    new ModuleScanner(container).scan(LegacyApp)
+    new ModuleScanner(container).scan(OutsiderApp)
 
-    const instance = container.resolve<BadConsumer>(BadConsumer, LegacyApp)
-    expect(instance.dep).toBeInstanceOf(PrivateService)
+    expect(() => container.resolve(BadConsumer, OutsiderApp)).toThrow(/not visible/)
+  })
+})
+
+describe('ModuleScanner — Nest parity', () => {
+  it('re-exports a provider through intermediate modules', () => {
+    @Injectable()
+    class DeepService {}
+
+    @Module({ providers: [DeepService], exports: [DeepService] })
+    class DeepModule {}
+
+    @Module({ imports: [DeepModule], exports: [DeepService] })
+    class MidModule {}
+
+    @Module({ imports: [MidModule] })
+    class TopModule {}
+
+    const container = new DIContainer()
+    new ModuleScanner(container).scan(TopModule)
+
+    expect(container.resolve(DeepService, TopModule)).toBeInstanceOf(DeepService)
+  })
+
+  it('re-exports a whole module when exports lists the module class', () => {
+    @Injectable()
+    class DeepService {}
+
+    @Module({ providers: [DeepService], exports: [DeepService] })
+    class DeepModule {}
+
+    @Module({ imports: [DeepModule], exports: [DeepModule] })
+    class MidModule {}
+
+    @Module({ imports: [MidModule] })
+    class TopModule {}
+
+    const container = new DIContainer()
+    new ModuleScanner(container).scan(TopModule)
+
+    expect(container.resolve(DeepService, TopModule)).toBeInstanceOf(DeepService)
+  })
+
+  it('exposes providers of a @Global() module without imports', () => {
+    @Injectable()
+    class GlobalConfig {}
+
+    @Global()
+    @Module({ providers: [GlobalConfig], exports: [GlobalConfig] })
+    class ConfigModule {}
+
+    @Injectable()
+    class Consumer {
+      @Inject(GlobalConfig)
+      cfg!: GlobalConfig
+    }
+
+    @Module({ providers: [Consumer] })
+    class IsolatedModule {}
+
+    const container = new DIContainer()
+    new ModuleScanner(container).scan(IsolatedModule)
+
+    expect(container.resolve(Consumer, IsolatedModule).cfg).toBeInstanceOf(GlobalConfig)
+  })
+
+  it('lets every module inject a token it registered itself', () => {
+    @Injectable()
+    class Shared {}
+
+    @Injectable()
+    class UserA {
+      @Inject(Shared)
+      svc!: Shared
+    }
+
+    @Injectable()
+    class UserB {
+      @Inject(Shared)
+      svc!: Shared
+    }
+
+    @Module({ providers: [UserA, { provide: Shared, useValue: { tag: 'A' } }] })
+    class ModuleA {}
+
+    @Module({ providers: [UserB, { provide: Shared, useValue: { tag: 'B' } }] })
+    class ModuleB {}
+
+    @Module({ imports: [ModuleA, ModuleB] })
+    class RootModule {}
+
+    const container = new DIContainer()
+    new ModuleScanner(container).scan(RootModule)
+
+    expect((container.resolve(UserA, ModuleA).svc as unknown as { tag: string }).tag).toBeDefined()
+    expect((container.resolve(UserB, ModuleB).svc as unknown as { tag: string }).tag).toBeDefined()
   })
 })

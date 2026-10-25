@@ -160,7 +160,7 @@ walk(rootModule)
 
 产物 `ScannedModule[]` 是后续所有桥接的输入：`declarations` → 建窗，`controllers` → 绑 IPC，`controllers + providers` → 绑 app 事件 / 跑生命周期。
 
-> **模块没有 Nest 式 `exports` 边界**：Provider 注册进全局容器后，任意模块都能注入。`@Module` 只负责组织 `imports` / `controllers` / `providers` / `declarations`。
+> **模块有 Nest 式 `exports` 边界**：Provider 注册进容器后归属注册它的模块，未写进 `exports` 的默认私有；`@Global()` 模块例外。`@Module` 同时组织 `imports` / `controllers` / `providers` / `exports` / `declarations`。
 
 ## 7. 启动时序与硬约束
 

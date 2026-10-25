@@ -36,8 +36,9 @@ await createApp(AppModule).start()
 | `imports` | 先扫描的子模块（DFS：先 imports 再自身） |
 | `controllers` | IPC 入口类，会注册进 DI 并由 IpcBridge 绑定 |
 | `providers` | 可注入服务；支持 class / `useClass` / `useValue` / `useFactory` |
-| `exports` | 对外暴露的 Provider 白名单；**不写 = 全部暴露**（见下节） |
+| `exports` | 对外暴露的 Provider 白名单；**不写 = 全部私有**（见下节） |
 | `declarations` | 窗口声明类（配合 `@WindowDeclaration`） |
+| `global` | 等价 `@Global()`，全局可见；一般直接用装饰器 |
 
 ## 功能拆分
 
@@ -55,7 +56,7 @@ await createApp(AppModule).start()
 
 ## Provider 可见性（exports）
 
-默认情况下，模块里的 Provider 是「全应用可见」的。想让某些 Provider 只在模块内部使用时，声明 `exports` 白名单：
+模块里的 Provider **默认私有**，只有写进 `exports` 才对其它模块可见——与 Nest 一致：
 
 ```ts
 @Module({
@@ -74,22 +75,56 @@ export class OrderModule {}
 // ❌ OrderModule 注入 UserRepository 会抛 "not visible from OrderModule"
 ```
 
-规则（与 Nest 一致，但保留向后兼容）：
+判定规则：
 
 | owner（Provider 所属模块） | consumer（调用方）能否注入 |
 |---|---|
 | consumer 自己 | ✅ 总是可见 |
-| owner 没写 `exports` | ✅ 全应用可见（旧行为） |
-| owner 写了 `exports` 且包含该 token | ✅ 可见 |
-| owner 写了 `exports` 但不含该 token | ❌ 抛错 |
-| 通过 `imports` 链间接到达 | 路径上每个「声明了 exports 的」中间模块都必须把它转发出来 |
+| owner 没写 `exports` | ❌ 私有 |
+| owner 的 `exports` 含该 token | ✅ 可见（要求 consumer 经 `imports` 到达 owner） |
+| owner 的 `exports` 不含该 token | ❌ 抛错 |
+| owner 被 `@Global()` 标记 | ✅ 无需 `imports`，全局可见 |
 
-两个容易踩的点：
+### 逐层转发
 
-- **`exports: []` 是严格模式**——声明了空数组等于「什么都不导出」，不是「全部导出」。
-- **转发要逐层写**：`A imports B imports C`，若 `B` 自己声明了 `exports`，那么 `C` 的 Provider 要被 `A` 看到就必须出现在 `B` 的 `exports` 里。
+`exports` 里可以写 **token**，也可以写 **模块类**。两种写法都支持跨层转发：
 
-> `ModuleRegistry`（封装这套可见性判定的类）是 `@electrum/core` 内部实现，由 `DIContainer` 私有持有；业务方只需要在 `@Module({ exports })` 里写数组，不需要也**不应该**直接 `new` 或调用它。
+```ts
+@Module({ providers: [DeepService], exports: [DeepService] })
+export class DeepModule {}
+
+// 写法一：转发 token
+@Module({ imports: [DeepModule], exports: [DeepService] })
+export class MidModule {}
+
+// 写法二：转发整个模块（等价于转出 DeepModule 的全部 exports）
+@Module({ imports: [DeepModule], exports: [DeepModule] })
+export class MidModule2 {}
+
+@Module({ imports: [MidModule] })
+export class TopModule {} // ✅ 能注入 DeepService
+```
+
+中间模块**不写 `exports` 就不会继续向下穿透**——想转发就必须显式写出来，这一点与 Nest 相同。
+
+### 全局模块
+
+`@Global()` 标记的模块不需要被 `imports` 就能被任何模块注入，适合配置、日志、数据库连接这类基础设施：
+
+```ts
+@Global()
+@Module({
+  providers: [ConfigService, { provide: 'APP_CONFIG', useValue: {...} }],
+  exports: [ConfigService, 'APP_CONFIG'],
+})
+export class ConfigModule {}
+```
+
+`@Global()` 与 `@Module()` 的先后顺序无关，两者写在同一个类上即可。
+
+> **同名 token**：两个模块各自 `providers` 同一个 token 时，每个模块都能注入自己注册的那份，但**实例是共享的**（后注册的实现生效）。Nest 为每个模块维护独立 injector，这里还没有做到实例隔离——同名 token 应尽量用字符串/symbol 前缀区分。
+
+> `ModuleRegistry`（封装这套可见性判定的类）是 `@electrum/core` 内部实现，由 `DIContainer` 私有持有；业务方只需要在 `@Module({ exports })` / `@Global()` 里声明，不需要也**不应该**直接 `new` 或调用它。
 
 ## 下一步
 

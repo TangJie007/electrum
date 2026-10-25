@@ -6,7 +6,7 @@ import {
   type InjectionPoint,
   type Scope,
 } from '@electrum/common'
-import { ModuleRegistry } from './module-registry'
+import { ModuleRegistry, type ModuleRelations } from './module-registry'
 
 /** 可被注入 / 注册的标识：类、字符串或 symbol */
 export type Token = Function | string | symbol
@@ -35,6 +35,8 @@ interface ProviderRecord {
   inject?: Token[]
   scope: Scope
   owner?: Function
+  /** 注册过该 token 的全部模块；同名 token 被多个模块注册时，各模块自己始终可见 */
+  owners?: Set<Function>
 }
 
 /**
@@ -132,11 +134,18 @@ export class DIContainer {
   /**
    * 注册一个 Provider。
    * 同一 token 重复注册会覆盖上一次（`@electrum/testing` 的 override 基于此）。
+   *
+   * 覆盖时保留历史 `owners`，让「多个模块各自 providers 同一个 token」时
+   * 每个模块仍能注入自己注册的服务（实例共享最后一份实现，见文档）。
    */
   register(token: Token, options: ProviderOptions = {}): void {
     // 覆盖注册意味着「换实现」：必须丢掉旧 singleton，否则 override 后仍拿到旧实例。
     // created 里保留旧实例，dispose() 时仍会被逆序销毁。
     this.singletons.delete(token)
+
+    const previous = this.providers.get(token)
+    const owners = previous?.owners ?? new Set<Function>()
+    if (options.owner) owners.add(options.owner)
 
     this.providers.set(token, {
       token,
@@ -145,15 +154,15 @@ export class DIContainer {
       useFactory: options.useFactory,
       inject: options.inject,
       scope: options.scope || 'singleton',
-      owner: options.owner,
+      // 覆盖注册（如 testing 的 overrideProvider）不传 owner 时保留原归属，
+      // 否则这个 Provider 会退化成「无 owner」而绕过 exports 校验
+      owner: options.owner ?? previous?.owner,
+      owners,
     })
   }
 
-  /** 登记模块的 imports / exports 关系，启用 exports 可见性校验 */
-  registerModule(
-    moduleClass: Function,
-    metadata: { imports?: Function[]; exports?: Token[] } = {},
-  ): void {
+  /** 登记模块的 imports / exports / global 关系，启用 exports 可见性校验 */
+  registerModule(moduleClass: Function, metadata: ModuleRelations = {}): void {
     this.moduleRegistry.register(moduleClass, metadata)
   }
 
@@ -736,11 +745,17 @@ export class DIContainer {
     return this.externalResolvers.find((resolver) => resolver.canResolve(token))
   }
 
-  /** 解析某 Provider 的注入点时，消费方是它所属的模块 */
+  /**
+   * 解析某 Provider 的注入点时，消费方是它所属的模块。
+   *
+   * 同名 token 被多个模块注册时优先用调用方模块：它的依赖应按真实注册方校验，
+   * 而不是被最后注册者「抢走」的 owner。
+   */
   private consumerFor(
     record: ProviderRecord | undefined,
     fromModule: Function | undefined,
   ): Function | undefined {
+    if (fromModule && record?.owners?.has(fromModule)) return fromModule
     return record?.owner ?? fromModule
   }
 
@@ -748,14 +763,23 @@ export class DIContainer {
     if (!fromModule) return
 
     const record = this.providers.get(token)
-    if (!record?.owner) return
+    if (!record) return
+
+    // 同名 token 被多个模块注册时，注册过它的模块都能注入自己那份（实例共享）
+    if (record.owners?.has(fromModule)) return
+
+    // 手工 register 的 Provider 没有归属模块，不做可见性限制
+    if (!record.owner) return
 
     if (this.moduleRegistry.canSee(fromModule, record.owner, token)) return
 
+    const declaredIn = [...(record.owners ?? [])].map((mod) => mod.name).join(', ')
     throw new Error(
       `Provider ${this.formatToken(token)} is not visible from ${fromModule.name}. ` +
-        `Add it to the "exports" array of ${record.owner.name}, and make sure ` +
-        `${fromModule.name} imports ${record.owner.name}.`,
+        (declaredIn
+          ? `It is declared in ${declaredIn}; add it to that module's "exports" array ` +
+            `and make sure ${fromModule.name} imports it.`
+          : `Register it in a @Module's providers array.`),
     )
   }
 

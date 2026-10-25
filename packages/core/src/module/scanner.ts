@@ -16,7 +16,7 @@ export interface ScannedModule {
   providers: Function[]
   /** 窗口声明类（@WindowDeclaration），供 WindowManager 使用 */
   declarations: Function[]
-  /** 对外导出的 token 白名单；未声明 exports 时为 undefined（= 全导出） */
+  /** 对外导出的 token / 模块白名单；未声明时为 undefined（模块私有，与 Nest 一致） */
   exports?: Token[]
 }
 

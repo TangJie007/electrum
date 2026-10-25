@@ -65,9 +65,10 @@ packages/common/
    ├─ polyfill.ts                          A  Symbol.metadata ??= Symbol.for(...)，必须最先执行
    ├─ constants/metadata-keys.ts           A  META（16 个 Symbol.for 键）+ readMetadata/getClassMetadata
    │                                          跨包元数据的唯一约定，10 个装饰器模块全部依赖
-   ├─ decorators/module.decorator.ts       A  @Module + ModuleMetadata / Provider / ValueProvider /
+   ├─ decorators/module.decorator.ts       A  @Module + @Global + ModuleMetadata / Provider / ValueProvider /
    │                                          ClassProvider / FactoryProvider / InjectionToken
-   │                                          （模块树契约；`exports` 是 Provider 可见性白名单）
+   │                                          （模块树契约；`exports` 是 Provider 可见性白名单，
+   │                                          不写即私有；`global` 等价 @Global()）
    ├─ decorators/inject.decorator.ts       B  @Inject / @Optional + InjectionPoint（被 ipc-emit、window-ref 复用）
    ├─ decorators/injectable.decorator.ts   B  @Injectable + Scope/InjectableOptions（scope 决定 DI 缓存策略，
    │                                          `singleton | transient | request`）
@@ -124,8 +125,9 @@ packages/core/
    │                                          支持 @Inject/@WindowRef/@IpcEmit/@Optional 属性注入
    │                                          （@Optional 走 canResolve：未 register 的 Class 也算可解析）
    │                                          —— 包内被引用 7 次，是全仓最高频文件
-   ├─ di/module-registry.ts                B  ModuleRegistry：模块 imports/exports 关系登记 +
-   │                                          canSee() 可见性判定（BFS 沿 imports 传播 exports）
+   ├─ di/module-registry.ts                B  ModuleRegistry：模块 imports/exports/global 关系登记 +
+   │                                          canSee() 可见性判定（Nest 语义：默认私有、BFS 逐层
+   │                                          re-export、exports 可写 token 或模块类、@Global 直通）
    ├─ module/scanner.ts                    A  ModuleScanner + ScannedModule
    │                                          DFS 遍历 @Module 树并边扫边注册 Provider（带 owner，被引用 5 次）；
    │                                          `{ provide, useClass }` 形态同样继承 useClass 上的 @Injectable scope

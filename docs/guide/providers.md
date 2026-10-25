@@ -208,7 +208,7 @@ export class BannerService {
 - `inject`：工厂参数对应的 token 列表，`resolve` 时先解析再传入  
 - 无 `inject` 时工厂无参调用（如上例 `APP_CONFIG`）
 
-仓库 `examples/basic` 中 `AppModule` + `ConfigService` 就是 `useFactory('APP_CONFIG')` → `@Inject('APP_CONFIG')` → `this.config.appName` 的完整链路。
+仓库 `examples/basic` 中 `ConfigModule` 的 `'APP_CONFIG'` 工厂 + `ConfigService` 的 `@Inject('APP_CONFIG')` 就是这条链路（`ConfigModule` 标了 `@Global()`，所以 `FileModule` 不用 imports 也能注入配置）。
 
 ### useFactory — 异步工厂
 
@@ -320,7 +320,7 @@ setInterval(() => {
 
 ## 诊断与排错
 
-Provider 类型不匹配、忘写 `providers`、`exports` 没放开，通常都表现为一句「找不到 Provider」。容器提供了两个出口：
+Provider 类型不匹配、忘写 `providers`、没把 Provider 写进 `exports`，通常都表现为一句「找不到 Provider」或「not visible」。容器提供了两个出口：
 
 ```ts
 const container = app.getContainer()

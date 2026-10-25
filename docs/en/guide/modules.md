@@ -36,8 +36,9 @@ await createApp(AppModule).start()
 | `imports` | Child modules scanned first (DFS: imports before self) |
 | `controllers` | IPC entry classes; registered in DI and bound by IpcBridge |
 | `providers` | Injectable services; supports class / `useClass` / `useValue` / `useFactory` |
-| `exports` | Whitelist of Providers exposed to other modules; **omitted = everything is visible** (see below) |
+| `exports` | Whitelist of Providers exposed to other modules; **omitted = everything is private** (see below) |
 | `declarations` | Window declaration classes (with `@WindowDeclaration`) |
+| `global` | Same as `@Global()`; visible application-wide. Prefer the decorator |
 
 ## Splitting by Feature
 
@@ -55,7 +56,7 @@ Module scanning registers Providers and resolves imports; the table above covers
 
 ## Provider Visibility (`exports`)
 
-By default every Provider in a module is visible application-wide. Declare an `exports` whitelist to keep some of them module-private:
+Providers are **private by default**—only what you list in `exports` is visible to other modules, same as Nest:
 
 ```ts
 @Module({
@@ -74,22 +75,56 @@ export class OrderModule {}
 // ❌ injecting UserRepository throws "not visible from OrderModule"
 ```
 
-Rules (Nest-compatible, but backward compatible too):
+Rules:
 
 | Owner (module that registered the Provider) | Can the consumer inject it? |
 |---|---|
 | Consumer itself | ✅ always visible |
-| Owner did not declare `exports` | ✅ visible application-wide (legacy behavior) |
-| Owner declared `exports` including this token | ✅ visible |
-| Owner declared `exports` without this token | ❌ throws |
-| Reached indirectly through the `imports` chain | ✅ only if every intermediate module that declares `exports` re-exports it |
+| Owner did not declare `exports` | ❌ private |
+| Owner's `exports` includes this token | ✅ visible (consumer must reach owner through `imports`) |
+| Owner's `exports` excludes this token | ❌ throws |
+| Owner is marked `@Global()` | ✅ visible without `imports` |
 
-Two easy traps:
+### Re-exports
 
-- **`exports: []` is strict mode**—an empty array means "export nothing", not "export everything".
-- **Re-exports are per hop**: with `A imports B imports C`, if `B` declares its own `exports`, then `C`'s Provider must appear in `B`'s `exports` for `A` to see it.
+`exports` accepts **tokens** and **module classes**; both work across multiple hops:
 
-> `ModuleRegistry` (the class implementing this visibility check) is an internal part of `@electrum/core`, held privately by `DIContainer`. Application code only writes the `@Module({ exports })` array—it never needs to and **should not** instantiate or call `ModuleRegistry` directly.
+```ts
+@Module({ providers: [DeepService], exports: [DeepService] })
+export class DeepModule {}
+
+// Form 1: re-export the token
+@Module({ imports: [DeepModule], exports: [DeepService] })
+export class MidModule {}
+
+// Form 2: re-export the whole module (equivalent to forwarding all its exports)
+@Module({ imports: [DeepModule], exports: [DeepModule] })
+export class MidModule2 {}
+
+@Module({ imports: [MidModule] })
+export class TopModule {} // ✅ can inject DeepService
+```
+
+An intermediate module that does **not** declare `exports` does not forward anything—you must re-export explicitly, exactly like Nest.
+
+### Global modules
+
+`@Global()` modules need no `imports` to be injected anywhere. Use it for infrastructure such as config, logging, database connections:
+
+```ts
+@Global()
+@Module({
+  providers: [ConfigService, { provide: 'APP_CONFIG', useValue: {...} }],
+  exports: [ConfigService, 'APP_CONFIG'],
+})
+export class ConfigModule {}
+```
+
+The order of `@Global()` and `@Module()` on the class does not matter.
+
+> **Duplicate tokens**: when two modules register the same token, each module can inject the one it registered, but the **instance is shared** (the last registration wins). Nest keeps a separate injector per module; Electrum does not isolate instances yet—prefer string/symbol prefixes for same-named tokens.
+
+> `ModuleRegistry` (the class implementing this visibility check) is an internal part of `@electrum/core`, held privately by `DIContainer`. Application code only declares `@Module({ exports })` / `@Global()`—it never needs to and **should not** instantiate or call `ModuleRegistry` directly.
 
 ## Next Steps
 

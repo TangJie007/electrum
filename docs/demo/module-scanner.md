@@ -5,10 +5,9 @@
 ## 示例声明
 
 ```ts
-// examples/basic/src/main/app.module.ts
+// examples/basic/src/main/config.module.ts
+@Global()
 @Module({
-  imports: [WindowModule, FileModule, UserModule],
-  controllers: [AppController],
   providers: [
     ConfigService,
     {
@@ -19,9 +18,20 @@
       }),
     },
   ],
+  exports: [ConfigService, 'APP_CONFIG'],
+})
+export class ConfigModule {}
+
+// examples/basic/src/main/app.module.ts
+@Module({
+  imports: [ConfigModule, WindowModule, FileModule, UserModule],
+  controllers: [AppController],
 })
 export class AppModule {}
 ```
+
+`ConfigModule` 上的 `@Global()` 让 `FileModule` 的 `FileService` 不必 `imports` 就能注入 `'APP_CONFIG'`；
+去掉 `@Global()` 后，`FileModule` 就必须显式 `imports: [ConfigModule]`，否则解析时抛 `not visible`。
 
 ## 代码路径
 
@@ -55,7 +65,7 @@ Application.start()
 `IpcBridge.registerController` 里会：
 
 ```ts
-const instance = this.container.resolve(controllerClass)
+const instance = await this.container.resolveAsync(controllerClass, moduleClass)
 ```
 
 若不进容器，就无法做属性注入（`@Inject` / `@IpcEmit` 等）。
