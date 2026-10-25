@@ -9,8 +9,9 @@
 演示：
 
 - Module / Controller / IPC handlers
-- 字段注入与生命周期钩子
-- 声明式窗口
+- 字段注入与生命周期钩子（`OnModuleInit` / `OnAppReady`）
+- 声明式窗口（`@WindowDeclaration` + `@WindowRef`，含 `show: false` 的显式显示时机）
+- Guard → Pipe → Interceptor → Filter 全链路（`src/main/user/user.middleware.ts` 里的 `AllowAllGuard` / `TrimStringsPipe`）
 - 全局 Filter / Interceptor
 - Preload：`@electrum/preload` 的 `exposeApi()`（`src/preload/index.ts`）
 - 渲染进程：Vue 3 + `@electrum/client` 的 `createClient()`（`api.user.list()` 等）
@@ -38,6 +39,8 @@ await app.start()
 |------|------|
 | `src/main/app.module.ts` | 根模块 imports |
 | `src/main/user/`、`file/`、`window/` | 功能模块 |
+| `src/main/user/user.middleware.ts` | `@UseGuards` / `@UsePipes` 示例（Pipe 逐个参数执行） |
+| `src/main/filters/global-exception.filter.ts` | 全局 Filter（未写 `@Catch` 即 catch-all） |
 | `src/preload/index.ts` | `exposeApi()` |
 | `src/renderer/App.vue`、`ipc-api.ts` | `createClient<IpcApi>()` |
 
@@ -68,7 +71,7 @@ pnpm start
 ## 文档站与设计文稿
 
 - 本站「使用指南」偏怎么写业务代码
-- 仓库根目录设计方案：[electron-mvc-framework-design.md](https://github.com/TangJie007/electrum/blob/main/electron-mvc-framework-design.md)
+- 仓库根目录设计方案（v2.1 阶段的设计快照，实现已迭代，**代码行为以本指南为准**）：[electron-mvc-framework-design.md](https://github.com/TangJie007/electrum/blob/main/electron-mvc-framework-design.md)
 - 需求 Spec：[specs/](https://github.com/TangJie007/electrum/tree/main/specs)
 
 ## 回到指南

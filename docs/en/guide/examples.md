@@ -9,8 +9,9 @@ Path: [`examples/basic`](https://github.com/TangJie007/electrum/tree/main/exampl
 Demonstrates:
 
 - Module / Controller / IPC handlers
-- Field injection and lifecycle hooks
-- Declarative windows
+- Field injection and lifecycle hooks (`OnModuleInit` / `OnAppReady`)
+- Declarative windows (`@WindowDeclaration` + `@WindowRef`, including explicit showing with `show: false`)
+- Full Guard → Pipe → Interceptor → Filter chain (`AllowAllGuard` / `TrimStringsPipe` in `src/main/user/user.middleware.ts`)
 - Global Filter / Interceptor
 - Preload: `@electrum/preload`'s `exposeApi()` (`src/preload/index.ts`)
 - Renderer: Vue 3 + `@electrum/client`'s `createClient()` (`api.user.list()`, etc.)
@@ -38,6 +39,8 @@ Recommended reading alongside:
 |------|------|
 | `src/main/app.module.ts` | Root module imports |
 | `src/main/user/`, `file/`, `window/` | Feature modules |
+| `src/main/user/user.middleware.ts` | `@UseGuards` / `@UsePipes` examples (Pipes run per argument) |
+| `src/main/filters/global-exception.filter.ts` | Global Filter (no `@Catch` means catch-all) |
 | `src/preload/index.ts` | `exposeApi()` |
 | `src/renderer/App.vue`, `ipc-api.ts` | `createClient<IpcApi>()` |
 
@@ -68,7 +71,7 @@ pnpm start
 ## Docs Site and Design Documents
 
 - This site's guide focuses on writing application code
-- Repository root design doc: [electron-mvc-framework-design.md](https://github.com/TangJie007/electrum/blob/main/electron-mvc-framework-design.md)
+- Repository root design doc (a v2.1 snapshot; the implementation has moved on—**this guide is authoritative for behavior**): [electron-mvc-framework-design.md](https://github.com/TangJie007/electrum/blob/main/electron-mvc-framework-design.md)
 - Requirement specs: [specs/](https://github.com/TangJie007/electrum/tree/main/specs)
 
 ## Back to the Guide

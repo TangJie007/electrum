@@ -5,6 +5,8 @@
 > **状态**：设计阶段  
 > **重大变更**：全面采用 TypeScript 5 原生 Stage 3 装饰器，移除 `experimentalDecorators` 和 `reflect-metadata` 依赖  
 > **包体系**：对齐 NestJS 分包模型，统一使用 `@electrum/*` 作用域包名（`@electrum/common`、`@electrum/core`、`@electrum/testing` 等）
+>
+> ⚠️ **状态说明**：本文是 v2.1 阶段的设计快照，实现随后续迭代已超出正文描述（例如：Pipe 改为逐个参数执行、Filter 按 `@Catch` 分派、同名 token 改为按模块隔离实例、`onModuleDestroy` 统一由 `container.dispose()` 逆序回调、`start()` 幂等）。**代码行为以 `docs/` 使用指南与 `packages/*/src` 为准。**
 
 ---
 

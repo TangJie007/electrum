@@ -31,5 +31,5 @@ When adding or changing a page, update **both** locales (Chinese source + Englis
 | `core/` / `en/core/` | Personal source deep-dive notes — **excluded from the site** (`srcExclude`) |
 | `.vitepress/` | VitePress config |
 
-Design overview: repo root `electron-mvc-framework-design.md`.  
+Design overview: repo root `electron-mvc-framework-design.md` (a v2.1 design snapshot; `docs/` and `packages/*/src` are authoritative for current behavior).  
 Specs: `specs/`.
