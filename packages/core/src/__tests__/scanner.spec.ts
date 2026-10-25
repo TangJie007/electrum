@@ -259,4 +259,52 @@ describe('ModuleScanner — Nest parity', () => {
     expect((container.resolve(UserA, ModuleA).svc as unknown as { tag: string }).tag).toBeDefined()
     expect((container.resolve(UserB, ModuleB).svc as unknown as { tag: string }).tag).toBeDefined()
   })
+
+  it('does not forward Providers that the re-exported module keeps private', () => {
+    @Injectable()
+    class Hidden {}
+
+    @Injectable()
+    class Consumer {
+      @Inject(Hidden)
+      hidden!: Hidden
+    }
+
+    @Module({ providers: [Hidden] })
+    class Holder {}
+
+    @Module({ imports: [Holder], exports: [Holder] })
+    class Forwarder {}
+
+    @Module({ imports: [Forwarder], providers: [Consumer] })
+    class App {}
+
+    const container = new DIContainer()
+    new ModuleScanner(container).scan(App)
+
+    expect(() => container.resolve(Consumer, App)).toThrow(/not visible/)
+  })
+
+  it('requires exports even for @Global() modules', () => {
+    @Injectable()
+    class NotExported {}
+
+    @Global()
+    @Module({ providers: [NotExported] })
+    class BadGlobal {}
+
+    @Injectable()
+    class Consumer {
+      @Inject(NotExported)
+      svc!: NotExported
+    }
+
+    @Module({ imports: [BadGlobal], providers: [Consumer] })
+    class App {}
+
+    const container = new DIContainer()
+    new ModuleScanner(container).scan(App)
+
+    expect(() => container.resolve(Consumer, App)).toThrow(/not visible/)
+  })
 })

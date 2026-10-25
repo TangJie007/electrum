@@ -83,7 +83,8 @@ export class OrderModule {}
 | owner 没写 `exports` | ❌ 私有 |
 | owner 的 `exports` 含该 token | ✅ 可见（要求 consumer 经 `imports` 到达 owner） |
 | owner 的 `exports` 不含该 token | ❌ 抛错 |
-| owner 被 `@Global()` 标记 | ✅ 无需 `imports`，全局可见 |
+| owner 是 `@Global()` 模块且已导出 | ✅ 无需 `imports`，全局可见 |
+| owner 是 `@Global()` 模块但没导出 | ❌ 仍私有（`@Global` 不豁免 `exports`） |
 
 ### 逐层转发
 
@@ -109,7 +110,7 @@ export class TopModule {} // ✅ 能注入 DeepService
 
 ### 全局模块
 
-`@Global()` 标记的模块不需要被 `imports` 就能被任何模块注入，适合配置、日志、数据库连接这类基础设施：
+`@Global()` 标记的模块不需要被 `imports` 就能被任何模块注入，适合配置、日志、数据库连接这类基础设施。**`@Global()` 只免掉 `imports`，不会绕过 `exports`**：要注入的 Provider 仍需写进 `exports`（与 Nest 一致）：
 
 ```ts
 @Global()
@@ -121,6 +122,8 @@ export class ConfigModule {}
 ```
 
 `@Global()` 与 `@Module()` 的先后顺序无关，两者写在同一个类上即可。
+
+注意：全局模块**自身仍要被某个已扫描到的模块 `imports` 一次**（通常就是根模块），否则扫描器根本不会访问它，Provider 也不会注册。`@Global()` 免掉的是「其它模块逐个 import」，不是「它自己被扫描」。
 
 > **同名 token**：两个模块各自 `providers` 同一个 token 时，每个模块都能注入自己注册的那份，但**实例是共享的**（后注册的实现生效）。Nest 为每个模块维护独立 injector，这里还没有做到实例隔离——同名 token 应尽量用字符串/symbol 前缀区分。
 

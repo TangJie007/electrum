@@ -48,7 +48,7 @@ Key points:
 | `{ provide, useClass }` | Alias / swap implementation |
 | `{ provide, useFactory, inject }` | Factory; resolve inject list first |
 
-> All Providers register into **one** `DIContainer`, but visibility follows Nest: each Provider belongs to the module that registered it and stays private unless listed in that module's `exports`; `@Global()` modules are visible everywhere. Duplicate tokens share one instance (no per-module injector isolation yet).
+> All Providers register into **one** `DIContainer`, but visibility follows Nest: each Provider belongs to the module that registered it and stays private unless listed in that module's `exports`; `@Global()` only removes the need to `imports` it. Duplicate tokens share one instance (no per-module injector isolation yet).
 
 ## 2. DIContainer: Full `resolve` Flow
 

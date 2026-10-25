@@ -126,8 +126,8 @@ packages/core/
    │                                          （@Optional 走 canResolve：未 register 的 Class 也算可解析）
    │                                          —— 包内被引用 7 次，是全仓最高频文件
    ├─ di/module-registry.ts                B  ModuleRegistry：模块 imports/exports/global 关系登记 +
-   │                                          canSee() 可见性判定（Nest 语义：默认私有、BFS 逐层
-   │                                          re-export、exports 可写 token 或模块类、@Global 直通）
+   │                                          canSee() 可见性判定（Nest 语义：默认私有、exports 逐层
+   │                                          re-export 可写 token 或模块类、@Global 免 imports 但仍需 exports）
    ├─ module/scanner.ts                    A  ModuleScanner + ScannedModule
    │                                          DFS 遍历 @Module 树并边扫边注册 Provider（带 owner，被引用 5 次）；
    │                                          `{ provide, useClass }` 形态同样继承 useClass 上的 @Injectable scope

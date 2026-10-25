@@ -1,5 +1,5 @@
 import { META, readMetadata, type ModuleMetadata, type Provider } from '@electrum/common'
-import { DIContainer, type Token } from '../di/container'
+import { DIContainer } from '../di/container'
 
 /**
  * 单个模块扫描结果快照。
@@ -16,8 +16,6 @@ export interface ScannedModule {
   providers: Function[]
   /** 窗口声明类（@WindowDeclaration），供 WindowManager 使用 */
   declarations: Function[]
-  /** 对外导出的 token / 模块白名单；未声明时为 undefined（模块私有，与 Nest 一致） */
-  exports?: Token[]
 }
 
 /**
@@ -90,7 +88,6 @@ export class ModuleScanner {
       controllers: metadata.controllers || [],
       providers: providerClasses,
       declarations: metadata.declarations || [],
-      exports: metadata.exports,
     })
   }
 
@@ -115,6 +112,10 @@ export class ModuleScanner {
     providerClasses: Function[],
     owner: Function,
   ): void {
+    if (provider == null) {
+      throw new Error(`Invalid provider in module ${owner.name}: provider is ${provider}`)
+    }
+
     if (typeof provider === 'function') {
       this.container.register(provider, {
         useClass: provider,
@@ -122,9 +123,15 @@ export class ModuleScanner {
         owner,
       })
       providerClasses.push(provider)
-    } else if ('useValue' in provider) {
+      return
+    }
+
+    if ('useValue' in provider) {
       this.container.register(provider.provide, { useValue: provider.useValue, owner })
-    } else if ('useClass' in provider) {
+      return
+    }
+
+    if ('useClass' in provider) {
       this.container.register(provider.provide, {
         useClass: provider.useClass,
         // `{ provide: TOKEN, useClass: Service }` 也要继承 Service 上的 @Injectable({ scope })
@@ -132,12 +139,21 @@ export class ModuleScanner {
         owner,
       })
       providerClasses.push(provider.useClass)
-    } else if ('useFactory' in provider) {
+      return
+    }
+
+    if ('useFactory' in provider) {
       this.container.register(provider.provide, {
         useFactory: provider.useFactory,
         inject: provider.inject,
         owner,
       })
+      return
     }
+
+    throw new Error(
+      `Invalid provider in module ${owner.name}: expected a class or an object with one of ` +
+        `useValue / useClass / useFactory`,
+    )
   }
 }

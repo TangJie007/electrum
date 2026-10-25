@@ -83,7 +83,8 @@ Rules:
 | Owner did not declare `exports` | ❌ private |
 | Owner's `exports` includes this token | ✅ visible (consumer must reach owner through `imports`) |
 | Owner's `exports` excludes this token | ❌ throws |
-| Owner is marked `@Global()` | ✅ visible without `imports` |
+| Owner is `@Global()` and exports it | ✅ visible without `imports` |
+| Owner is `@Global()` but does not export it | ❌ still private (`@Global` does not bypass `exports`) |
 
 ### Re-exports
 
@@ -109,7 +110,7 @@ An intermediate module that does **not** declare `exports` does not forward anyt
 
 ### Global modules
 
-`@Global()` modules need no `imports` to be injected anywhere. Use it for infrastructure such as config, logging, database connections:
+`@Global()` modules need no `imports` to be injected anywhere. Use it for infrastructure such as config, logging, database connections. **`@Global()` only removes the `imports` requirement—it does not bypass `exports`**: injectable Providers must still be listed in `exports`, same as Nest:
 
 ```ts
 @Global()
@@ -121,6 +122,8 @@ export class ConfigModule {}
 ```
 
 The order of `@Global()` and `@Module()` on the class does not matter.
+
+Note: a global module must still be `imports`-ed **once** by a module the scanner actually reaches (usually the root module). Otherwise the scanner never visits it and its Providers are never registered. `@Global()` removes the per-consumer import, not the need to be scanned.
 
 > **Duplicate tokens**: when two modules register the same token, each module can inject the one it registered, but the **instance is shared** (the last registration wins). Nest keeps a separate injector per module; Electrum does not isolate instances yet—prefer string/symbol prefixes for same-named tokens.
 

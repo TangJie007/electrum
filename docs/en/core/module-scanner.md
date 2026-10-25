@@ -94,7 +94,7 @@ So the Scanner registers Controllers with `useClass: controller`, using the same
 
 ## 7. Known Limitations (Specs / Future Evolution)
 
-- **Single container, Nest-style visibility**: All module Providers register into **one** `DIContainer`; a Provider is private to its module unless listed in that module's `exports` (or the module is `@Global()`). Duplicate tokens share one instance—there is no per-module injector yet.  
+- **Single container, Nest-style visibility**: All module Providers register into **one** `DIContainer`; a Provider is private to its module unless listed in that module's `exports`. `@Global()` only removes the `imports` requirement, not the `exports` one. Duplicate tokens share one instance—there is no per-module injector yet.  
 - **Circular module imports**: `visited` skips re-walking; circular instance dependencies are still detected by `DIContainer`.
 
 ## 8. Cross-Reading

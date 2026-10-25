@@ -162,7 +162,7 @@ export class DIContainer {
   }
 
   /** 登记模块的 imports / exports / global 关系，启用 exports 可见性校验 */
-  registerModule(moduleClass: Function, metadata: ModuleRelations = {}): void {
+  registerModule(moduleClass: Function, metadata: ModuleRelations): void {
     this.moduleRegistry.register(moduleClass, metadata)
   }
 
@@ -773,13 +773,14 @@ export class DIContainer {
 
     if (this.moduleRegistry.canSee(fromModule, record.owner, token)) return
 
-    const declaredIn = [...(record.owners ?? [])].map((mod) => mod.name).join(', ')
+    // owner 必定也在 owners 里，合并后一定有值
+    const declaredIn = [...new Set([...(record.owners ?? []), record.owner])]
+      .map((mod) => mod.name)
+      .join(', ')
     throw new Error(
       `Provider ${this.formatToken(token)} is not visible from ${fromModule.name}. ` +
-        (declaredIn
-          ? `It is declared in ${declaredIn}; add it to that module's "exports" array ` +
-            `and make sure ${fromModule.name} imports it.`
-          : `Register it in a @Module's providers array.`),
+        `It is declared in ${declaredIn}; add it to that module's "exports" array ` +
+        `and make sure ${fromModule.name} imports it.`,
     )
   }
 

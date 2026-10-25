@@ -38,12 +38,12 @@ export interface ModuleMetadata {
    * 对外暴露的 Provider 白名单，语义与 Nest 一致：
    * - 可写 Provider token，也可写整个模块类（等价于转发该模块的 exports）
    * - 不声明 = 什么都不导出，本模块 Provider 私有
-   * - `@Global()` 标记的模块无视该限制，全局可见
+   * - `@Global()` 只免掉 imports，不豁免本列表
    */
   exports?: InjectionToken[]
   /**
    * 是否全局模块（等价 Nest 的 `@Global()`）。
-   * 全局模块不需要被 imports 就能被任何模块注入。
+   * 全局模块不需要被 imports；但其 Provider 仍要写进 `exports` 才能被外部注入。
    */
   global?: boolean
 }
@@ -63,7 +63,8 @@ export function Module(metadata: ModuleMetadata) {
 }
 
 /**
- * 标记全局模块，等价 Nest 的 `@Global()`：导出对象无需被 imports 即可被任意模块注入。
+ * 标记全局模块，等价 Nest 的 `@Global()`：模块无需被 imports，其中写进 `exports`
+ * 的 Provider 即可被任意模块注入（`@Global` 不豁免 `exports`）。
  *
  * ```ts
  * @Global()
