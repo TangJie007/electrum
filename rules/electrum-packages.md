@@ -150,7 +150,7 @@ packages/core/
 |---|---|---|
 | `di/container.ts` | **7** | application, scanner, pipeline, ipc-bridge, event-bridge, window/manager, lifecycle/manager |
 | `module/scanner.ts` | **5** | application, window/manager, lifecycle/manager, ipc-bridge, event-bridge |
-| `di/module-registry.ts` | 1 | di/container（容器内部持有，不对外暴露实现细节） |
+| `di/module-registry.ts` | 1 | di/container（私有持有；`index.ts` 有导出，但仅供诊断/扩展，业务方只用 `@Module({ exports })`） |
 | `application.ts` | 2 | index.ts, plugin/plugin.interface.ts |
 | `middleware/pipeline.ts` | 2 | application, ipc-bridge |
 | `bridge/*`、`window/manager`、`lifecycle/manager` | 各 1 | 仅 application.ts |
@@ -291,6 +291,8 @@ packages/testing/
    `rules` 本文件的文件树与「入口导出」。
 10. **`register()` 覆盖已解析过的 token 会丢弃旧 singleton**：这是 `TestContainer.overrideProvider`
     生效的前提。被丢弃的实例仍留在销毁列表里，由 `dispose()` 逆序销毁，不要"顺手清理"掉。
+11. **业务方只应使用 `runInRequestScopeAsync()`**：同步版 `runInRequestScope()` 不销毁请求内创建的实例，
+    仅限框架内部的同步解析路径使用。桥接层（IPC / AppEvent）已自动包作用域，业务代码无需重复包。
 
 ## 8. 本规则的维护
 

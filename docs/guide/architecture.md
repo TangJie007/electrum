@@ -57,24 +57,24 @@ createApp(AppModule)
   │      · setWindowProvider → @WindowRef
   │      · setWindowSender   → @IpcEmit
   │
-  ├─ 4. IpcBridge.registerAll()
-  │      · resolve(Controller)（属性注入就绪）
+  ├─ 4. await IpcBridge.registerAll()
+  │      · await resolveAsync(Controller)（属性注入就绪，支持异步工厂）
   │      · @IpcHandle → ipcMain.handle（完整中间件）
   │      · @IpcOn     → ipcMain.on（仅 Guard）
   │
-  ├─ 5. EventBridge.registerAll()
-  │      · @AppEvent → app.on(...)
+  ├─ 5. await EventBridge.registerAll()
+  │      · @AppEvent → app.on(...)（回调内自动包 request 作用域）
   │
   ├─ 6. Lifecycle：onModuleInit → onAppReady
   │
   ├─ 7. plugin.ready?.()
   │
   └─ 8. before-quit → shutdown
-         · plugin.destroy → onModuleDestroy → unregisterAll IPC
+        · plugin.destroy → onModuleDestroy → container.dispose() → unregisterAll
 ```
 
 **硬约束：先窗口，再 IPC。**  
-注册 IPC 时会 `resolve(Controller)`，字段上可能有 `@WindowRef` / `@IpcEmit`；窗未就绪则注入失败。
+注册 IPC 时会 `await resolveAsync(Controller)`，字段上可能有 `@WindowRef` / `@IpcEmit`；窗未就绪则注入失败。
 
 ## 4. 核心运行时组件
 
@@ -82,7 +82,7 @@ createApp(AppModule)
 |------|------|------|
 | `Application` | `packages/core/src/application.ts` | 编排入口；持有 DI / 管道 / 窗口 / 桥 |
 | `ModuleScanner` | `module/scanner.ts` | 扫模块树，注册 Provider / Controller |
-| `DIContainer` | `di/container.ts` | `register` / `resolve`；属性注入；默认 singleton |
+| `DIContainer` | `di/container.ts` | `register` / `resolve` / `resolveAsync`；属性注入；singleton / transient / request；环依赖检测与 `printDependencyGraph` |
 | `IpcBridge` | `bridge/ipc-bridge.ts` | 装饰器元数据 → `ipcMain.handle` / `on` |
 | `EventBridge` | `bridge/event-bridge.ts` | `@AppEvent` → `app.on` |
 | `MiddlewarePipeline` | `middleware/pipeline.ts` | Guard → Pipe → Interceptor → Filter |
@@ -139,7 +139,10 @@ createApp(AppModule)
 - **属性注入**（Stage 3 无构造参数注入）：`@Inject(Token) field!: Type`
 - `register(token, recipe)` 只记账；`resolve(token)` 才 `new` + 填字段
 - 默认 **singleton**（同一容器内同 token 多次 resolve 同一实例）
-- 支持 `useClass` / `useValue` / `useFactory`，以及 `scope: 'transient'`
+- 支持 `useClass` / `useValue` / `useFactory`（工厂可返回 Promise，走 `resolveAsync`）
+- 作用域：`scope: 'singleton' | 'transient' | 'request'`
+- 环依赖默认抛错并给出完整链路，可 `setCircularStrategy('resolve')` 转为复用未填充实例
+- `dispose()` 按创建逆序销毁（`dispose()` / `onDispose()`）
 
 教学示例见 `examples/di`；正式扫描注册见 `ModuleScanner`。
 

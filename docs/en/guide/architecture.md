@@ -57,20 +57,20 @@ createApp(AppModule)
   │      · setWindowProvider → @WindowRef
   │      · setWindowSender   → @IpcEmit
   │
-  ├─ 4. IpcBridge.registerAll()
-  │      · resolve(Controller) (property injection ready)
+  ├─ 4. await IpcBridge.registerAll()
+  │      · await resolveAsync(Controller) (property injection ready, async factories supported)
   │      · @IpcHandle → ipcMain.handle (full middleware)
   │      · @IpcOn     → ipcMain.on (guards only)
   │
-  ├─ 5. EventBridge.registerAll()
-  │      · @AppEvent → app.on(...)
+  ├─ 5. await EventBridge.registerAll()
+  │      · @AppEvent → app.on(...) (callback wrapped in a request scope)
   │
   ├─ 6. Lifecycle: onModuleInit → onAppReady
   │
   ├─ 7. plugin.ready?.()
   │
   └─ 8. before-quit → shutdown
-         · plugin.destroy → onModuleDestroy → unregisterAll IPC
+        · plugin.destroy → onModuleDestroy → container.dispose() → unregisterAll
 ```
 
 **Hard rule: windows before IPC.**  
@@ -82,7 +82,7 @@ IPC registration `resolve`s Controllers that may need `@WindowRef` / `@IpcEmit`;
 |-----------|--------|------|
 | `Application` | `packages/core/src/application.ts` | Orchestrator; owns DI / pipeline / windows / bridges |
 | `ModuleScanner` | `module/scanner.ts` | Walk module tree; register providers / controllers |
-| `DIContainer` | `di/container.ts` | `register` / `resolve`; property injection; default singleton |
+| `DIContainer` | `di/container.ts` | `register` / `resolve` / `resolveAsync`; property injection; singleton / transient / request; cycle detection and `printDependencyGraph` |
 | `IpcBridge` | `bridge/ipc-bridge.ts` | Metadata → `ipcMain.handle` / `on` |
 | `EventBridge` | `bridge/event-bridge.ts` | `@AppEvent` → `app.on` |
 | `MiddlewarePipeline` | `middleware/pipeline.ts` | Guard → Pipe → Interceptor → Filter |
@@ -139,7 +139,10 @@ Push (main → renderer):
 - **Property injection** (Stage 3 has no constructor-param injection): `@Inject(Token) field!: Type`
 - `register` only stores recipes; `resolve` does `new` + field fill
 - Default **singleton** (same container, same token → same instance)
-- Supports `useClass` / `useValue` / `useFactory`, and `scope: 'transient'`
+- Supports `useClass` / `useValue` / `useFactory` (factories may return a Promise; resolve via `resolveAsync`)
+- Scopes: `scope: 'singleton' | 'transient' | 'request'`
+- Cycles throw by default with the full chain; `setCircularStrategy('resolve')` switches to reusing the shell instance
+- `dispose()` tears instances down in reverse creation order (`dispose()` / `onDispose()`)
 
 See `examples/di` for a walkthrough; production registration is via `ModuleScanner`.
 
