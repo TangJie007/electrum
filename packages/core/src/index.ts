@@ -3,6 +3,14 @@ import '@electrum/common'
 export { Application, createApp } from './application'
 
 export { DIContainer } from './di/container'
+export type {
+  Token,
+  ProviderOptions,
+  ExternalResolver,
+  CircularStrategy,
+  DependencyNode,
+} from './di/container'
+export { ModuleRegistry } from './di/module-registry'
 export { ModuleScanner } from './module/scanner'
 export type { ScannedModule } from './module/scanner'
 
@@ -49,6 +57,7 @@ export type {
   ValueProvider,
   ClassProvider,
   FactoryProvider,
+  InjectionToken,
   InjectableOptions,
   Scope,
   IpcHandlerEntry,

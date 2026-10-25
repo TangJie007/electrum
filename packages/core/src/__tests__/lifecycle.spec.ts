@@ -2,6 +2,19 @@ import { describe, it, expect, vi } from 'vitest'
 import { Injectable } from '@electrum/common'
 import { DIContainer } from '../di/container'
 import { LifecycleManager } from '../lifecycle/manager'
+import type { ScannedModule } from '../module/scanner'
+
+/** 构造最小可用的扫描结果 */
+function stubModule(overrides: Partial<ScannedModule>): ScannedModule {
+  return {
+    moduleClass: class {},
+    metadata: {},
+    controllers: [],
+    providers: [],
+    declarations: [],
+    ...overrides,
+  }
+}
 
 @Injectable()
 class Alpha {
@@ -36,9 +49,7 @@ describe('LifecycleManager', () => {
     const alpha = container.resolve<Alpha>(Alpha)
     const beta = container.resolve<Beta>(Beta)
 
-    const lifecycle = new LifecycleManager(container, [
-      { controllers: [], providers: [Alpha, Beta] },
-    ])
+    const lifecycle = new LifecycleManager(container, [stubModule({ providers: [Alpha, Beta] })])
 
     await lifecycle.runHook('onModuleInit')
     expect(alpha.hooks).toContain('alpha:init')

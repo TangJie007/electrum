@@ -10,6 +10,7 @@ export type {
   ValueProvider,
   ClassProvider,
   FactoryProvider,
+  InjectionToken,
 } from './decorators/module.decorator'
 
 export { Injectable } from './decorators/injectable.decorator'

@@ -60,7 +60,7 @@ export class MiddlewarePipeline {
       const transformedArgs = await this.runPipes(ctx, context)
       return await this.runWithInterceptors(ctx, context, transformedArgs)
     } catch (err) {
-      return this.runFilters(err, context, ctx.method)
+      return await this.runFilters(err, context, ctx.method)
     }
   }
 
@@ -90,7 +90,7 @@ export class MiddlewarePipeline {
     const allGuards = [...this.globalGuards, ...classGuards, ...methodGuards]
 
     for (const guardClass of allGuards) {
-      const guard = this.container.resolve(guardClass) as CanActivate
+      const guard = (await this.container.resolveAsync(guardClass)) as CanActivate
       const canActivate = await guard.canActivate(context)
       if (!canActivate) {
         throw new ForbiddenException(
@@ -111,7 +111,7 @@ export class MiddlewarePipeline {
 
     let args = [...ctx.args]
     for (const pipeClass of allPipes) {
-      const pipe = this.container.resolve(pipeClass) as PipeTransform
+      const pipe = (await this.container.resolveAsync(pipeClass)) as PipeTransform
       if (args.length > 0) {
         args[0] = await pipe.transform(args[0], context)
       }
@@ -144,18 +144,20 @@ export class MiddlewarePipeline {
 
     let chain = executeController
     for (let i = allInterceptors.length - 1; i >= 0; i--) {
-      const interceptor = this.container.resolve(allInterceptors[i]) as NestInterceptor
+      const interceptor = (await this.container.resolveAsync(
+        allInterceptors[i],
+      )) as NestInterceptor
       const next = chain
       chain = () => interceptor.intercept(context, next)
     }
     return chain()
   }
 
-  private runFilters(
+  private async runFilters(
     exception: unknown,
     context: IpcContext,
     method: string | symbol,
-  ): IpcErrorResponse {
+  ): Promise<IpcErrorResponse> {
     const classFilters = readMetadata<Function[]>(context.controllerClass, META.CLASS_FILTERS) || []
     const methodEntries =
       readMetadata<MethodMiddlewareEntry[]>(context.controllerClass, META.METHOD_FILTERS) || []
@@ -165,7 +167,7 @@ export class MiddlewarePipeline {
     const allFilters = [...methodFilters, ...classFilters, ...this.globalFilters]
 
     for (const filterClass of allFilters) {
-      const filter = this.container.resolve(filterClass) as ExceptionFilter
+      const filter = (await this.container.resolveAsync(filterClass)) as ExceptionFilter
       return filter.catch(exception, context)
     }
 

@@ -1,7 +1,13 @@
 import { META } from '../constants/metadata-keys'
 
-/** 实例生命周期：singleton 全局一份；transient 每次 resolve 都 new */
-export type Scope = 'singleton' | 'transient'
+/**
+ * 实例生命周期：
+ * - `singleton` 容器内唯一一份（默认）
+ * - `transient` 每次 resolve 都 new
+ * - `request` 每次 IPC 调用一份；注入到长生命周期实例上时拿到的是代理，
+ *   每次访问都会落到「当前请求」的实例上
+ */
+export type Scope = 'singleton' | 'transient' | 'request'
 
 export interface InjectableOptions {
   scope?: Scope

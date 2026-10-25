@@ -13,6 +13,19 @@ import { IpcBridge } from '../bridge/ipc-bridge'
 import { MiddlewarePipeline } from '../middleware/pipeline'
 import { createApp } from '../application'
 import type { Plugin } from '../plugin/plugin.interface'
+import type { ScannedModule } from '../module/scanner'
+
+/** 构造最小可用的扫描结果，避免每个用例重复写全部字段 */
+function stubModule(overrides: Partial<ScannedModule>): ScannedModule {
+  return {
+    moduleClass: class {},
+    metadata: {},
+    controllers: [],
+    providers: [],
+    declarations: [],
+    ...overrides,
+  }
+}
 
 vi.mock('electron', () => ({
   app: {
@@ -84,13 +97,13 @@ describe('IpcBridge', () => {
     vi.clearAllMocks()
   })
 
-  it('unregisterAll removes handle and on listeners for registered channels', () => {
+  it('unregisterAll removes handle and on listeners for registered channels', async () => {
     const container = new DIContainer()
     container.register(DemoController, { useClass: DemoController })
     const pipeline = new MiddlewarePipeline(container)
-    const bridge = new IpcBridge(container, [{ controllers: [DemoController] }], pipeline)
+    const bridge = new IpcBridge(container, [stubModule({ controllers: [DemoController] })], pipeline)
 
-    bridge.registerAll()
+    await bridge.registerAll()
     bridge.unregisterAll()
 
     expect(ipcMain.handle).toHaveBeenCalledWith('demo:ping', expect.any(Function))
@@ -102,10 +115,14 @@ describe('IpcBridge', () => {
     const container = new DIContainer()
     container.register(DemoController, { useClass: DemoController })
     const pipeline = new MiddlewarePipeline(container)
-    const bridge = new IpcBridge(container, [{ controllers: [DemoController] }], pipeline)
+    const bridge = new IpcBridge(
+      container,
+      [stubModule({ controllers: [DemoController] })],
+      pipeline,
+    )
     const instance = container.resolve<DemoController>(DemoController)
 
-    bridge.registerAll()
+    await bridge.registerAll()
 
     const handleCall = vi.mocked(ipcMain.handle).mock.calls.find((c) => c[0] === 'demo:ping')
     expect(handleCall).toBeTruthy()
@@ -121,7 +138,7 @@ describe('IpcBridge', () => {
     expect(instance.lastOnArgs).toEqual([event, 'x'])
   })
 
-  it('skips duplicate channel registration', () => {
+  it('skips duplicate channel registration', async () => {
     @Controller('dup')
     class A {
       @IpcHandle('x')
@@ -141,23 +158,23 @@ describe('IpcBridge', () => {
     container.register(A, { useClass: A })
     container.register(B, { useClass: B })
     const pipeline = new MiddlewarePipeline(container)
-    const bridge = new IpcBridge(container, [{ controllers: [A, B] }], pipeline)
+    const bridge = new IpcBridge(container, [stubModule({ controllers: [A, B] })], pipeline)
 
-    bridge.registerAll()
+    await bridge.registerAll()
 
     const handleCalls = vi.mocked(ipcMain.handle).mock.calls.filter((c) => c[0] === 'dup:x')
     expect(handleCalls).toHaveLength(1)
   })
 
-  it('skips devOnly channels when NODE_ENV is not development', () => {
+  it('skips devOnly channels when NODE_ENV is not development', async () => {
     const prev = process.env.NODE_ENV
     process.env.NODE_ENV = 'production'
     try {
       const container = new DIContainer()
       container.register(DemoController, { useClass: DemoController })
       const pipeline = new MiddlewarePipeline(container)
-      const bridge = new IpcBridge(container, [{ controllers: [DemoController] }], pipeline)
-      bridge.registerAll()
+      const bridge = new IpcBridge(container, [stubModule({ controllers: [DemoController] })], pipeline)
+      await bridge.registerAll()
 
       const channels = vi.mocked(ipcMain.handle).mock.calls.map((c) => c[0])
       expect(channels).toContain('demo:ping')

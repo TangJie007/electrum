@@ -26,11 +26,16 @@ export class IpcBridge {
     private pipeline: MiddlewarePipeline,
   ) {}
 
-  /** 遍历已扫描模块的 controllers，全部挂到 ipcMain */
-  registerAll(): void {
+  /**
+   * 遍历已扫描模块的 controllers，全部挂到 ipcMain。
+   *
+   * 走 `resolveAsync`：Controller 的依赖图上若含异步 `useFactory`，
+   * 也能在启动阶段正确就绪，而不是等到第一次 IPC 调用才炸。
+   */
+  async registerAll(): Promise<void> {
     for (const mod of this.scannedModules) {
       for (const controllerClass of mod.controllers) {
-        this.registerController(controllerClass)
+        await this.registerController(controllerClass, mod.moduleClass)
       }
     }
     this.logger.log(`Registered ${this.registeredChannels.size} IPC channels`)
@@ -67,9 +72,12 @@ export class IpcBridge {
    *
    * 装饰器阶段只写 metadata；真正挂监听在这里。
    */
-  private registerController(controllerClass: Function): void {
+  private async registerController(
+    controllerClass: Function,
+    moduleClass?: Function,
+  ): Promise<void> {
     // 1. 从 DI 拿 Controller 单例（@Inject / @WindowRef / @IpcEmit 已注入）
-    const instance = this.container.resolve(controllerClass)
+    const instance = await this.container.resolveAsync(controllerClass, moduleClass)
 
     // 2. `@Controller('file')` → prefix = 'file'；无前缀则 channel 原样使用
     const controllerMeta = readMetadata<{ prefix: string }>(controllerClass, META.CONTROLLER)
@@ -91,16 +99,19 @@ export class IpcBridge {
       }
 
       // 闭包捕获 instance / method；真正调用走 MiddlewarePipeline（Guard → Interceptor → 业务方法）
-      ipcMain.handle(fullChannel, async (_event, ...args) => {
-        return this.pipeline.execute({
-          type: 'handle',
-          instance,
-          method,
-          controllerClass,
-          channel: fullChannel,
-          event: _event,
-          args,
-        })
+      // runInRequestScopeAsync：每次 invoke 都开启一个 request 作用域，供 request-scoped Provider 使用
+      ipcMain.handle(fullChannel, (_event, ...args) => {
+        return this.container.runInRequestScopeAsync(() =>
+          this.pipeline.execute({
+            type: 'handle',
+            instance,
+            method,
+            controllerClass,
+            channel: fullChannel,
+            event: _event,
+            args,
+          }),
+        )
       })
 
       this.registeredChannels.add(fullChannel)
@@ -120,15 +131,17 @@ export class IpcBridge {
 
       // executeGuardOnly：只跑 Guard，不跑 Interceptor；void 忽略 Promise，避免 unhandled rejection 外泄到 EventEmitter
       ipcMain.on(fullChannel, (event, ...args) => {
-        void this.pipeline.executeGuardOnly({
-          type: 'on',
-          instance,
-          method,
-          controllerClass,
-          channel: fullChannel,
-          event,
-          args,
-        })
+        void this.container.runInRequestScopeAsync(() =>
+          this.pipeline.executeGuardOnly({
+            type: 'on',
+            instance,
+            method,
+            controllerClass,
+            channel: fullChannel,
+            event,
+            args,
+          }),
+        )
       })
 
       this.registeredChannels.add(fullChannel)

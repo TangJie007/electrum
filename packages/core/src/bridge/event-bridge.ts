@@ -21,33 +21,34 @@ export class EventBridge {
     private scannedModules: ScannedModule[],
   ) {}
 
-  /** 遍历已扫描模块的 controllers + providers，绑定所有 @AppEvent */
-  registerAll(): void {
+  /**
+   * 遍历已扫描模块的 controllers + providers，绑定所有 @AppEvent。
+   *
+   * 走 `resolveAsync`：依赖图里含异步 `useFactory` 时也能正确就绪。
+   */
+  async registerAll(): Promise<void> {
     for (const mod of this.scannedModules) {
       for (const cls of [...mod.controllers, ...mod.providers]) {
-        this.bindEvents(cls)
+        await this.bindEvents(cls, mod.moduleClass)
       }
     }
   }
 
-  private bindEvents(targetClass: Function): void {
+  private async bindEvents(targetClass: Function, moduleClass?: Function): Promise<void> {
     const handlers = readMetadata<AppEventEntry[]>(targetClass, META.APP_EVENT) || []
     if (handlers.length === 0) return
 
-    const instance = this.container.resolve<any>(targetClass)
+    const instance = await this.container.resolveAsync<any>(targetClass, moduleClass)
 
     for (const { event, method } of handlers) {
       const listener = (...args: any[]) => {
-        try {
-          const result = instance[method](...args)
-          if (result instanceof Promise) {
-            result.catch((err: Error) =>
-              this.logger.error(`AppEvent "${event}" error: ${err.message}`),
-            )
-          }
-        } catch (err: any) {
-          this.logger.error(`AppEvent "${event}" error: ${err.message}`)
-        }
+        // 与 IPC 对齐：一次事件回调也视为一个 request 作用域，
+        // 这样 @AppEvent 处理器里可以安全使用 request-scoped Provider
+        void this.container
+          .runInRequestScopeAsync(async () => instance[method](...args))
+          .catch((err: any) =>
+            this.logger.error(`AppEvent "${event}" error: ${err?.message || err}`),
+          )
       }
 
       app.on(event as any, listener)

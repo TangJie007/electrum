@@ -79,9 +79,14 @@ export class Application {
     return this
   }
 
-  /** 手动从容器取实例（调试 / 插件扩展用） */
+  /** 手动从容器取实例（调试 / 插件扩展用）。图中有异步工厂时请用 `resolveAsync` */
   resolve<T>(token: Function | string | symbol): T {
     return this.container.resolve<T>(token)
+  }
+
+  /** 异步取实例：支持返回 Promise 的 `useFactory` */
+  async resolveAsync<T>(token: Function | string | symbol): Promise<T> {
+    return this.container.resolveAsync<T>(token)
   }
 
   getWindowManager(): WindowManager {
@@ -115,13 +120,13 @@ export class Application {
       else this.windowManager.sendTo(target, channel, ...args)
     })
 
-    // 4. 解析各 Controller，按 prefix:channel 绑定 ipcMain.handle / on
+    // 4. 解析各 Controller（异步路径），按 prefix:channel 绑定 ipcMain.handle / on
     this.ipcBridge = new IpcBridge(this.container, this.scannedModules, this.pipeline)
-    this.ipcBridge.registerAll()
+    await this.ipcBridge.registerAll()
 
     // 5. 绑定 @AppEvent 到 app.on
     this.eventBridge = new EventBridge(this.container, this.scannedModules)
-    this.eventBridge.registerAll()
+    await this.eventBridge.registerAll()
 
     // 6. 生命周期：先模块初始化，再应用就绪
     this.lifecycle = new LifecycleManager(this.container, this.scannedModules)
@@ -152,6 +157,8 @@ export class Application {
       await plugin.destroy?.(this)
     }
     await this.lifecycle?.runHook('onModuleDestroy')
+    // 钩子跑完后再销毁实例（关闭连接 / 定时器），最后才拆桥接
+    await this.container.dispose()
     this.ipcBridge?.unregisterAll()
     this.eventBridge?.unregisterAll()
   }

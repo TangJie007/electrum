@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   Module,
   Injectable,
+  Inject,
   Controller,
   WindowDeclaration,
 } from '@electrum/common'
@@ -85,5 +86,82 @@ describe('ModuleScanner', () => {
     scanner.scan(ConfigModule)
 
     expect(container.resolve('GREETING')).toBe('hello-test')
+  })
+
+  it('inherits @Injectable({ scope }) for useClass providers', () => {
+    @Injectable({ scope: 'request' })
+    class ScopedService {}
+
+    @Module({ providers: [{ provide: 'SCOPED', useClass: ScopedService }] })
+    class ScopedModule {}
+
+    const container = new DIContainer()
+    new ModuleScanner(container).scan(ScopedModule)
+
+    const node = container.getDependencyGraph().find((n) => n.token === '"SCOPED"')
+    expect(node?.scope).toBe('request')
+
+    const proxy = container.resolve<{ value: number }>('SCOPED')
+    expect(() => proxy.value).toThrow(/outside of a request scope/)
+  })
+})
+
+describe('ModuleScanner — exports visibility', () => {
+  @Injectable()
+  class PublicService {}
+
+  @Injectable()
+  class PrivateService {}
+
+  @Injectable()
+  class OkConsumer {
+    @Inject(PublicService)
+    dep!: PublicService
+  }
+
+  @Injectable()
+  class BadConsumer {
+    @Inject(PrivateService)
+    dep!: PrivateService
+  }
+
+  @Module({ providers: [PublicService, PrivateService], exports: [PublicService] })
+  class LibModule {}
+
+  @Module({ imports: [LibModule], providers: [OkConsumer] })
+  class AppModuleOk {}
+
+  @Module({ imports: [LibModule], providers: [BadConsumer] })
+  class AppModuleBad {}
+
+  it('allows providers listed in exports', () => {
+    const container = new DIContainer()
+    new ModuleScanner(container).scan(AppModuleOk)
+
+    const instance = container.resolve<OkConsumer>(OkConsumer, AppModuleOk)
+    expect(instance.dep).toBeInstanceOf(PublicService)
+  })
+
+  it('rejects providers missing from exports', () => {
+    const container = new DIContainer()
+    new ModuleScanner(container).scan(AppModuleBad)
+
+    expect(() => container.resolve<BadConsumer>(BadConsumer, AppModuleBad)).toThrow(
+      /not visible/,
+    )
+  })
+
+  it('keeps legacy behavior when exports is not declared', () => {
+    @Module({ providers: [PrivateService] })
+    class LegacyModule {}
+
+    @Module({ imports: [LegacyModule], providers: [BadConsumer] })
+    class LegacyApp {}
+
+    const container = new DIContainer()
+    new ModuleScanner(container).scan(LegacyApp)
+
+    const instance = container.resolve<BadConsumer>(BadConsumer, LegacyApp)
+    expect(instance.dep).toBeInstanceOf(PrivateService)
   })
 })
