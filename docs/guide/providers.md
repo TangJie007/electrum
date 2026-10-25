@@ -61,6 +61,32 @@ resolve 才干活：new Cls() → 读 @Inject → 递归 resolve → 赋到字�
 | `@Optional()` | token **能解析**才注入，否则跳过该字段（不抛错）；Class token 即使没进 `providers` 也会按类构造 |
 | `@WindowRef(name)` | 注入名为 `name` 的 `BrowserWindow` |
 
+## 带类型的 token
+
+字符串 / symbol 的问题是类型信息在 token 上就丢了：`@Inject('API_URL')` 只能靠字段上的类型标注，`app.resolve('API_URL')` 更是直接推断成 `unknown`。`createInjectionToken<T>()` 生成一个**运行时是 symbol、类型上携带 `T`** 的 token：
+
+```ts
+import { createInjectionToken } from '@electrum/common'
+
+export const USER_REPO = createInjectionToken<UserRepository>('UserRepository')
+
+@Module({ providers: [{ provide: USER_REPO, useClass: SqliteUserRepository }] })
+export class UserModule {}
+
+@Injectable()
+export class UserService {
+  @Inject(USER_REPO) repo!: UserRepository   // 类型由 token 决定，写错编译器会报
+}
+
+const repo = app.resolve(USER_REPO)          // repo: UserRepository
+```
+
+- 底层是 `Symbol.for('electrum:token:<description>')`，热重载 / 多份模块副本下同名 token 仍是同一个键
+- `description` 会出现在报错信息与依赖图里，建议直接用接口名
+- 跨包共享时把 `createInjectionToken()` 的结果从公共包 `export` 出去，让类型只有一份声明
+
+`InjectionToken<T>` 是这些形态的联合类型（`Function | string | symbol | TypedInjectionToken<T>`），`@Inject`、`app.resolve`、`app.resolveAsync`、`providers` 的 `provide` 都接受它。
+
 ## 自定义 Provider
 
 除了直接写类（`providers: [UserService]`），还支持三种对象形态。统一写法：`provide` 是注入时用的 **token**，后面跟「怎么造出值」。
@@ -237,6 +263,27 @@ export class AppModule {}
 - **并发只构造一次**：同一 singleton token 的并发 `resolveAsync` 共享同一个 Promise；`transient` 不参与去重，每次解析都是新实例。
 - **工厂的 `inject` 列表同样检测环**：`A.inject=[B]` / `B.inject=[A]` 会报 `Circular dependency detected: A → B → A`，而不是栈溢出或死锁。
 
+### 工厂的 scope
+
+对象形态的 Provider 都可以显式声明 `scope`（`useValue` / `useClass` / `useFactory` 三者的类型里都有这个字段）：
+
+```ts
+@Module({
+  providers: [
+    // 每次解析都重新执行工厂
+    { provide: 'DB_CONN', scope: 'transient', useFactory: () => connect() },
+    // 同一次 IPC / AppEvent 调用内复用同一个产物
+    { provide: 'REQUEST_ID', scope: 'request', useFactory: () => crypto.randomUUID() },
+  ],
+})
+export class AppModule {}
+```
+
+- `useFactory` + `scope: 'request'`：同一请求内多次解析拿到**同一个**工厂产物；请求结束按创建逆序销毁（`dispose()` / `onDispose()` / `onModuleDestroy`）；跨请求不复用，也不参与 singleton 的 in-flight Promise 去重
+- `useFactory` + `scope: 'transient'`：每次解析都重新调用工厂
+- `useClass` 不写 `scope` 时继承实现类上 `@Injectable({ scope })` 的声明
+- `useValue` 声明 `scope` 意义不大：值本身是同一个引用，变的只是缓存位置
+
 ### 怎么选
 
 ```
@@ -312,7 +359,7 @@ setInterval(() => {
 }, 60_000)
 ```
 
-- 作用域结束时，本次创建的实例会**按创建逆序**销毁（`dispose()` 或 `onDispose()`）。
+- 作用域结束时，本次创建的实例会**按创建逆序**销毁（`onModuleDestroy()` / `dispose()` / `onDispose()`）。
 - 在作用域外访问 request-scoped Provider 会抛 `was accessed outside of a request scope`，这是设计如此，不是 bug。
 - ⚠️ 同名的同步版本 `runInRequestScope()` **不会**销毁本次创建的实例，只留给框架内部同步路径使用，业务代码请一律用 `runInRequestScopeAsync()`。
 
@@ -345,7 +392,7 @@ DI dependency graph (12 providers):
 其它两点：
 
 - **环依赖**默认直接抛错，错误信息会带上完整链路 `A → B → A`。确实需要互相引用（如双向回调）时，用 `container.setCircularStrategy('resolve')` 复用「已建壳、未填字段」的实例——注意此时拿到对象时部分字段可能还是 `undefined`。
-- **销毁**：容器只接管 singleton 的生命周期，`dispose()` 时按创建逆序调用实例的 `dispose()` / `onDispose()`；`transient` 与 `request` 由持有者或请求作用域负责。
+- **销毁**：`dispose()` 按创建逆序回调每个实例的 `onModuleDestroy()` / `dispose()` / `onDispose()`（实现了哪个就调哪个，都实现则都调），覆盖类 Provider 与 `useFactory` 产物；`transient` 实例随创建者存亡，`request` 实例在请求作用域结束时由作用域单独销毁。
 
 ## 动手理解 DI
 

@@ -125,7 +125,32 @@ export class ConfigModule {}
 
 注意：全局模块**自身仍要被某个已扫描到的模块 `imports` 一次**（通常就是根模块），否则扫描器根本不会访问它，Provider 也不会注册。`@Global()` 免掉的是「其它模块逐个 import」，不是「它自己被扫描」。
 
-> **同名 token**：两个模块各自 `providers` 同一个 token 时，每个模块都能注入自己注册的那份，但**实例是共享的**（后注册的实现生效）。Nest 为每个模块维护独立 injector，这里还没有做到实例隔离——同名 token 应尽量用字符串/symbol 前缀区分。
+> **同名 token**：两个模块各自 `providers` 同一个 token 时，**各自持有独立实例**（与 Nest 的 per-module injector 一致）：`AModule` 注入到的是它自己注册的那份，`BModule` 注入到的是它自己注册的那份，互不影响，也不再存在「后注册的把前一个覆盖掉」。
+>
+> 例外是**不带 `owner` 的全局注册**（手工 `container.register()` / `@electrum/testing` 的 `overrideProvider`）：它优先级最高，对所有模块生效——这正是测试里替换依赖所依赖的行为。
+
+### 启动期静态校验
+
+`ModuleScanner` 在注册完全部 Provider 后会做一次模块图校验，把「配置写错但运行到才报」的问题提前到启动阶段：
+
+| 检查项 | 不通过时 |
+|---|---|
+| `exports` 里的 token 是否真由本模块或它的 `imports` 子树提供 | 启动即抛错（拼错 token 名不会被静默忽略） |
+| `exports: [OtherModule]` 里的模块是否真的出现在 `imports` 中 | 启动即抛错（转发一个没导入的模块没有意义） |
+
+### 导出模块图
+
+排查循环依赖、确认 exports 是否漏写时，可以直接把扫描结果导出来：
+
+```ts
+const app = createApp(AppModule)
+await app.start()
+
+app.getModuleGraph()    // 结构化 JSON：modules / edges（import、export-module）/ providers
+app.printModuleGraph()  // mermaid 源码，可贴进文档或渲染成图
+```
+
+`getModuleGraph()` 只读容器、不实例化任何 Provider，`start()` 之前返回空图，`shutdown()` 之后也会清空，避免拿到陈旧快照。
 
 > `ModuleRegistry`（封装这套可见性判定的类）是 `@electrum/core` 内部实现，由 `DIContainer` 私有持有；业务方只需要在 `@Module({ exports })` / `@Global()` 里声明，不需要也**不应该**直接 `new` 或调用它。
 

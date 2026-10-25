@@ -200,14 +200,12 @@ describe('Application.shutdown', () => {
 
     internals.ipcBridge = { unregisterAll: vi.fn() }
     internals.eventBridge = { unregisterAll: vi.fn() }
-    internals.lifecycle = { runHook: vi.fn().mockResolvedValue(undefined) }
 
     await internals.shutdown()
     await internals.shutdown()
 
     expect(internals.ipcBridge?.unregisterAll).toHaveBeenCalledOnce()
     expect(internals.eventBridge?.unregisterAll).toHaveBeenCalledOnce()
-    expect(internals.lifecycle?.runHook).toHaveBeenCalledOnce()
   })
 })
 

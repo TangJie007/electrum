@@ -1,5 +1,5 @@
 import { META, readMetadata, type ModuleMetadata, type Provider } from '@electrum/common'
-import { DIContainer } from '../di/container'
+import { DIContainer, formatToken, type Token } from '../di/container'
 
 /**
  * 单个模块扫描结果快照。
@@ -34,15 +34,105 @@ export class ModuleScanner {
   /** 扫描产出的有序列表（子模块在前、父模块在后，因 DFS 先走 imports） */
   private results: ScannedModule[] = []
 
+  /** 模块 → 它自己声明的 Provider token（静态校验用） */
+  private declaredTokens = new Map<Function, Set<Token>>()
+
   constructor(private container: DIContainer) {}
 
   /**
    * 从根模块开始扫描。
    * @param rootModule 通常是 AppModule 类（必须带 @Module）
+   * @throws 模块图不合法时（imports 不是 @Module、exports 了没提供/没导入的东西）
    */
   scan(rootModule: Function): ScannedModule[] {
     this.walk(rootModule)
+    this.validateGraph()
     return this.results
+  }
+
+  /**
+   * 启动期静态校验：把「运行时才会炸」的模块图错误提前到 start() 第一步。
+   *
+   * 能查出来的问题：
+   * - `exports` 了本模块及其 imports 都没提供过的 token（否则要到注入时才报 not visible）
+   * - `exports: [OtherModule]` 却没 import 那个模块（转发语义不成立）
+   *
+   * `imports` 里放了没有 `@Module` 的类由 `walk()` 直接拦下；
+   * 同名 token 被多个模块各自 provide 是合法且隔离的，不在校验范围内。
+   */
+  private validateGraph(): void {
+    const problems: string[] = []
+
+    for (const { moduleClass, metadata } of this.results) {
+      for (const exported of metadata.exports || []) {
+        if (this.isModule(exported)) {
+          if (!this.reaches(moduleClass, exported)) {
+            problems.push(
+              `${moduleClass.name} re-exports module ${exported.name} but never imports it`,
+            )
+          }
+          continue
+        }
+
+        if (!this.providesTransitively(moduleClass, exported, new Set())) {
+          problems.push(
+            `${moduleClass.name} exports ${formatToken(exported)} which is not provided by ` +
+              `itself or any module it imports`,
+          )
+        }
+      }
+    }
+
+    if (problems.length > 0) {
+      throw new Error(
+        `Module graph validation failed:\n- ${problems.join('\n- ')}\n\n` +
+          `Fix the @Module metadata (imports / exports) or run ` +
+          `app.getModuleGraph() to inspect the graph.`,
+      )
+    }
+  }
+
+  private isModule(value: unknown): value is Function {
+    return typeof value === 'function' && !!readMetadata(value, META.MODULE)
+  }
+
+  /** from 是否（直接或间接）imports 了 target */
+  private reaches(from: Function, target: Function): boolean {
+    const stack = [from]
+    const seen = new Set<Function>()
+
+    while (stack.length > 0) {
+      const current = stack.pop()!
+      if (seen.has(current)) continue
+      seen.add(current)
+
+      const metadata = readMetadata<ModuleMetadata>(current, META.MODULE)
+      for (const imported of metadata?.imports || []) {
+        if (imported === target) return true
+        stack.push(imported)
+      }
+    }
+
+    return false
+  }
+
+  /** moduleClass 自己或它 imports 的模块里，是否有谁提供了该 token */
+  private providesTransitively(
+    moduleClass: Function,
+    token: Token,
+    seen: Set<Function>,
+  ): boolean {
+    if (seen.has(moduleClass)) return false
+    seen.add(moduleClass)
+
+    if (this.declaredTokens.get(moduleClass)?.has(token)) return true
+
+    const metadata = readMetadata<ModuleMetadata>(moduleClass, META.MODULE)
+    for (const imported of metadata?.imports || []) {
+      if (this.providesTransitively(imported, token, seen)) return true
+    }
+
+    return false
   }
 
   /**
@@ -91,6 +181,16 @@ export class ModuleScanner {
     })
   }
 
+  /** 记录某模块声明过的 token（静态校验 exports 用） */
+  private declare(owner: Function, token: Token): void {
+    let tokens = this.declaredTokens.get(owner)
+    if (!tokens) {
+      tokens = new Set()
+      this.declaredTokens.set(owner, tokens)
+    }
+    tokens.add(token)
+  }
+
   /** 读取 @Injectable({ scope })；未标注时交给容器默认（singleton） */
   private readScope(cls: Function): 'singleton' | 'transient' | 'request' | undefined {
     const injectableMeta = readMetadata<{ scope: 'singleton' | 'transient' | 'request' }>(
@@ -122,22 +222,29 @@ export class ModuleScanner {
         scope: this.readScope(provider),
         owner,
       })
+      this.declare(owner, provider)
       providerClasses.push(provider)
       return
     }
 
     if ('useValue' in provider) {
-      this.container.register(provider.provide, { useValue: provider.useValue, owner })
+      this.container.register(provider.provide, {
+        useValue: provider.useValue,
+        scope: provider.scope,
+        owner,
+      })
+      this.declare(owner, provider.provide)
       return
     }
 
     if ('useClass' in provider) {
       this.container.register(provider.provide, {
         useClass: provider.useClass,
-        // `{ provide: TOKEN, useClass: Service }` 也要继承 Service 上的 @Injectable({ scope })
-        scope: this.readScope(provider.useClass),
+        // 显式 scope 优先；否则继承 `useClass` 上的 @Injectable({ scope })
+        scope: provider.scope ?? this.readScope(provider.useClass),
         owner,
       })
+      this.declare(owner, provider.provide)
       providerClasses.push(provider.useClass)
       return
     }
@@ -146,8 +253,11 @@ export class ModuleScanner {
       this.container.register(provider.provide, {
         useFactory: provider.useFactory,
         inject: provider.inject,
+        // 工厂函数没有 @Injectable 元数据，作用域只能在 provider 上声明
+        scope: provider.scope,
         owner,
       })
+      this.declare(owner, provider.provide)
       return
     }
 

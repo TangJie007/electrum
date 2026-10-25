@@ -13,6 +13,7 @@ import {
   type IpcContext,
   type IpcErrorResponse,
   type NestInterceptor,
+  type PipeContext,
   type PipeTransform,
 } from '@electrum/common'
 import { DIContainer } from '../di/container'
@@ -148,6 +149,34 @@ class PipeController {
   }
 }
 
+class FirstArgOnlyPipe implements PipeTransform {
+  transform(value: unknown, context: PipeContext): unknown {
+    if (context.index !== 0) return value
+    return typeof value === 'string' ? value.toUpperCase() : value
+  }
+}
+
+@Controller('pipe')
+class MultiPipeController {
+  lastIndexes: number[] = []
+
+  @IpcHandle('join')
+  @UsePipes(UppercasePipe)
+  join(...args: unknown[]) {
+    this.lastIndexes = args.map((_arg, index) => index)
+    return args
+  }
+}
+
+@Controller('pipe')
+class FirstOnlyController {
+  @IpcHandle('join')
+  @UsePipes(FirstArgOnlyPipe)
+  join(...args: unknown[]) {
+    return args
+  }
+}
+
 @Controller('guard')
 @UseGuards(AllowGuard)
 class GuardController {
@@ -257,6 +286,45 @@ describe('MiddlewarePipeline.execute — Pipe', () => {
 
     expect(result).toBe('HELLO')
     expect(instance.lastArgs).toEqual(['HELLO'])
+  })
+
+  it('transforms every argument, not just args[0]', async () => {
+    const container = new DIContainer()
+    container.register(UppercasePipe, { useClass: UppercasePipe })
+    const pipeline = new MiddlewarePipeline(container)
+    const instance = new MultiPipeController()
+
+    const result = await pipeline.execute({
+      type: 'handle',
+      instance,
+      method: 'join',
+      controllerClass: MultiPipeController,
+      channel: 'pipe:join',
+      event: {} as any,
+      args: ['a', 'b', 3],
+    })
+
+    expect(result).toEqual(['A', 'B', 3])
+    expect(instance.lastIndexes).toEqual([0, 1, 2])
+  })
+
+  it('lets a pipe opt out of non-first arguments via context.index', async () => {
+    const container = new DIContainer()
+    container.register(FirstArgOnlyPipe, { useClass: FirstArgOnlyPipe })
+    const pipeline = new MiddlewarePipeline(container)
+    const instance = new FirstOnlyController()
+
+    const result = await pipeline.execute({
+      type: 'handle',
+      instance,
+      method: 'join',
+      controllerClass: FirstOnlyController,
+      channel: 'pipe:join',
+      event: {} as any,
+      args: ['a', 'b'],
+    })
+
+    expect(result).toEqual(['A', 'b'])
   })
 
   it('applies pipes in global → class → method order', async () => {

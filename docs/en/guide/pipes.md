@@ -2,7 +2,7 @@
 
 Pipes are responsible for **transforming (or validating) business parameters**: after a Guard passes, and before Interceptors / business methods run, they `transform` the payload passed to `invoke`.
 
-Current implementation convention: **transform `args[0]` in sequence** (additional parameters are kept as-is). The design assumes the primary business payload is the first argument.
+A Pipe is invoked **once per argument**: if `args` has N elements, each Pipe runs N times, and `context.index` identifies which argument is being transformed. Handlers with multiple parameters no longer let the 2nd and later arguments slip past validation.
 
 Pipes **do not** decide access (that is [Guard](./guards)), and **do not** wrap the entire call (that is [Interceptor](./interceptors)).
 
@@ -11,13 +11,23 @@ See [Middleware Pipeline](./middleware) for an overview.
 ## Interface
 
 ```ts
-import type { PipeTransform, IpcContext } from '@electrum/common'
+import type { PipeTransform, PipeContext } from '@electrum/common'
 
-transform(value: any, context: IpcContext): any | Promise<any>
+transform(value: any, context: PipeContext): any | Promise<any>
 ```
 
-- `value`: current `args[0]` (output of the previous Pipe becomes input to the next)
-- `context`: same as Guard, including `channel` / `event` / `args`, etc.
+- `value`: the current argument (the output of the previous Pipe for the same argument becomes the input to the next)
+- `context`: `IpcContext` plus `index` (current argument index) and `argCount` (total argument count),
+  and `args` (the argument array currently being rewritten, showing the already-transformed earlier arguments)
+
+IPC carries no parameter type metadata, so a Pipe cannot be bound to a specific parameter the way it can in Nest. Every argument goes through by default; a Pipe that only cares about the primary payload can opt out explicitly:
+
+```ts
+transform(value: any, context: PipeContext) {
+  if (context.index !== 0) return value   // only validate the first argument
+  return parse(value)
+}
+```
 
 On validation failure, throw `ValidationException` (or another `ElectronException`); [Filter](./filters) returns it to the renderer process.
 
@@ -25,11 +35,11 @@ On validation failure, throw `ValidationException` (or another `ElectronExceptio
 
 ```ts
 import { Injectable, UsePipes, Controller, IpcHandle, ValidationException } from '@electrum/common'
-import type { PipeTransform, IpcContext } from '@electrum/common'
+import type { PipeTransform, PipeContext } from '@electrum/common'
 
 @Injectable()
 export class ParseIntPipe implements PipeTransform {
-  transform(value: any, _ctx: IpcContext) {
+  transform(value: any, _ctx: PipeContext) {
     const n = Number(value)
     if (!Number.isInteger(n)) {
       throw new ValidationException('id must be an integer', [{ field: 'id', value }])

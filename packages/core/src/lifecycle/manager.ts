@@ -48,6 +48,9 @@ export class LifecycleManager {
     for (const mod of this.scannedModules) {
       for (const cls of [...mod.controllers, ...mod.providers]) {
         if (!this.container.has(cls)) continue
+        // request 作用域解析出来的是代理，作用域外读属性会直接抛错；
+        // 这类实例也不该有全局生命周期钩子（随请求创建、随请求销毁）
+        if (this.container.getScope(cls) === 'request') continue
         if (onlyExisting && !this.container.isInstantiated(cls)) continue
 
         const instance = await this.container.resolveAsync<any>(cls, mod.moduleClass)

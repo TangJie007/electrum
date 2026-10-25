@@ -7,6 +7,7 @@ import {
   WindowRef,
   Controller,
   IpcEmit,
+  createInjectionToken,
 } from '@electrum/common'
 import { DIContainer } from '../di/container'
 
@@ -481,5 +482,67 @@ describe('DIContainer — external resolvers', () => {
 
     expect(container.has(TOKEN)).toBe(true)
     expect(container.resolve(TOKEN)).toBe('from-external')
+  })
+})
+
+describe('DIContainer — typed tokens & factory scope', () => {
+  interface UserRepository {
+    find(id: string): string
+  }
+
+  it('returns the token payload type for createInjectionToken tokens', () => {
+    const USER_REPO = createInjectionToken<UserRepository>('UserRepository')
+    const container = new DIContainer()
+    container.register(USER_REPO, {
+      useValue: { find: (id: string) => `user:${id}` } satisfies UserRepository,
+    })
+
+    // 编译期断言：resolve 的返回类型由 token 的泛型参数推断
+    const repo: UserRepository = container.resolve(USER_REPO)
+    expect(repo.find('1')).toBe('user:1')
+
+    // 运行时仍是 symbol，可用 Symbol.for 跨包/热重载复用同一个键
+    expect(typeof (USER_REPO as unknown)).toBe('symbol')
+    expect(String(USER_REPO)).toBe('Symbol(electrum:token:UserRepository)')
+  })
+
+  it('honours explicit scope on factory providers', () => {
+    const container = new DIContainer()
+    let seq = 0
+
+    container.register('TRANSIENT', {
+      useFactory: () => ({ id: ++seq }),
+      scope: 'transient',
+    })
+    container.register('SINGLETON', {
+      useFactory: () => ({ id: ++seq }),
+      scope: 'singleton',
+    })
+
+    expect(container.resolve('TRANSIENT')).not.toBe(container.resolve('TRANSIENT'))
+    expect(container.resolve('SINGLETON')).toBe(container.resolve('SINGLETON'))
+  })
+
+  it('reuses a request-scoped factory result inside one request scope only', async () => {
+    const container = new DIContainer()
+    let seq = 0
+
+    container.register('REQUEST_SCOPED', {
+      useFactory: () => ({ id: ++seq }),
+      scope: 'request',
+    })
+
+    const first = await container.runInRequestScopeAsync(async () => {
+      const a = await container.resolveAsync<{ id: number }>('REQUEST_SCOPED')
+      const b = await container.resolveAsync<{ id: number }>('REQUEST_SCOPED')
+      expect(a).toBe(b)
+      return a
+    })
+
+    const second = await container.runInRequestScopeAsync(() =>
+      container.resolveAsync<{ id: number }>('REQUEST_SCOPED'),
+    )
+
+    expect(second).not.toBe(first)
   })
 })

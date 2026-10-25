@@ -176,7 +176,7 @@ walk(rootModule)
 6. runHook('onModuleInit') → runHook('onAppReady')
 7. plugin.ready?.()
 8. app.on('before-quit') → shutdown
-   shutdown: plugin.destroy → onModuleDestroy → ipcBridge.unregisterAll → eventBridge.unregisterAll
+   shutdown: plugin.destroy → container.dispose()（逆序回调 onModuleDestroy）→ ipcBridge.unregisterAll → eventBridge.unregisterAll → windowManager.destroyAll()
 ```
 
 **硬约束：第 3 步必须在第 4 步之前。**
@@ -195,7 +195,7 @@ walk(rootModule)
 
 ```
 runGuards        → 任一返回 false → 抛 ForbiddenException
-runPipes         → 只变换 args[0]（其余参数原样透传）
+runPipes         → 逐个参数变换（context.index / argCount 标明位置）
 runWithInterceptors → 洋葱模型包裹业务方法
   catch          → runFilters → 返回 IpcErrorResponse
 ```
@@ -209,17 +209,21 @@ runWithInterceptors → 洋葱模型包裹业务方法
 
 ### 8.2 两个必须知道的实现细节
 
-**① Pipe 只处理第一个参数**
+**① Pipe 逐个参数处理**
 
 ```ts
-let args = [...ctx.args]
-for (const pipeClass of allPipes) {
-  const pipe = this.container.resolve(pipeClass) as PipeTransform
-  if (args.length > 0) args[0] = await pipe.transform(args[0], context)
+const args = [...context.args]
+for (const planned of plan.pipes) {            // 全局 → 类级 → 方法级
+  const pipe = await this.resolvePlanned(planned) as PipeTransform
+  for (let index = 0; index < args.length; index++) {
+    args[index] = await pipe.transform(args[index], {
+      ...context, args, index, argCount: args.length,
+    })
+  }
 }
 ```
 
-多参数的 IPC 方法只有 `args[0]` 会被变换。
+多参数 IPC 方法的**每个参数**都会过一遍 Pipe；IPC 没有参数类型元数据，所以不能像 Nest 那样把 Pipe 绑到具体参数上。只关心首参的 Pipe 用 `context.index !== 0` 显式跳过。
 
 **② Filter 按 `@Catch()` 类型命中，第一个匹配即返回**
 
@@ -281,13 +285,15 @@ broadcast(channel, ...args)     // 所有窗口
 
 `LifecycleManager.runHook()` 遍历所有 `controllers + providers`，`container.resolve` 后挑出实现该钩子的实例，**串行** (`await` + `try/catch`) 执行：单个实例抛错只记日志、不中断其余钩子。串行是为了让有依赖关系的初始化/销毁顺序可预测；`onModuleDestroy` 额外按收集顺序**逆序**执行，符合资源后进先出。
 
+`shutdown()` 路径上 `onModuleDestroy` 由 `container.dispose()` 统一按**创建逆序**回调（同时覆盖 `useFactory` 产物），`LifecycleManager` 不再单独跑一遍，避免同一个类 Provider 被销毁两次；`runHook('onModuleDestroy')` 仍可作为手动入口。`request` 作用域实例不参与全局钩子（作用域外访问其代理会抛错），随请求作用域结束销毁。
+
 | 钩子 | 时机 |
 |------|------|
 | `onModuleInit` | IPC / app 事件都绑完之后 |
 | `onAppReady` | `onModuleInit` 全部完成后 |
 | `onModuleDestroy` | `before-quit` → `shutdown()` |
 
-`shutdown()` 幂等（`shutdownPromise` 复用同一次执行），收尾顺序保证资源不泄漏：插件 `destroy` → `onModuleDestroy`（逆序） → `container.dispose()` → 卸 IPC → 卸 app 事件 → `destroyAll()` 关窗口。
+`shutdown()` 幂等（`shutdownPromise` 复用同一次执行），收尾顺序保证资源不泄漏：插件 `destroy` → `container.dispose()`（内部按创建逆序回调 `onModuleDestroy` / `dispose` / `onDispose`）→ 卸 IPC → 卸 app 事件 → `destroyAll()` 关窗口。`onModuleDestroy` **不再**由 `LifecycleManager` 单独跑一遍——容器统一负责，避免类 Provider 被销毁两次。
 
 `before-quit` 里先 `event.preventDefault()`，`await shutdown()` 完成后置 `shutdownDone` 再调 `app.quit()` 放行——Electron 不会等待返回 Promise 的监听器，否则连接池 / 文件句柄可能被半路砍掉。
 
@@ -338,7 +344,7 @@ electrum-codegen --tsconfig ... --output src/renderer/ipc-api.ts --preload src/p
 5. channel = `prefix ? prefix + ':' + channel : channel`
 6. Provider 默认 singleton
 7. 元数据继承靠原型链，`Object.keys` 看不到继承项
-8. Pipe 只变换 `args[0]`；Filter 命中第一个即返回
+8. Pipe 逐个参数变换（`context.index` / `argCount`）；Filter 命中第一个即返回
 
 ## 下一步
 

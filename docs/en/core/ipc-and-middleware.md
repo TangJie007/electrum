@@ -34,7 +34,7 @@ Handles with `devOnly: true`: skipped outside dev environment.
 
 Duplicate channels: `warn` then skip, avoiding a second `handle` crash.
 
-`unregisterAll`: `removeHandler` + `removeAllListeners` on registered channels (for quit / shutdown).
+`unregisterAll`: `removeHandler` for handled channels plus `removeListener` per registered `@IpcOn` listener (for quit / shutdown). It never calls `removeAllListeners`, so listeners registered by application code on the same channel survive.
 
 ## 2. MiddlewarePipeline: Path of One invoke
 
@@ -43,7 +43,7 @@ Duplicate channels: `warn` then skip, avoiding a second `handle` crash.
 ```
 try:
   runGuards
-  args' = runPipes          // transform args[0] in sequence
+  args' = runPipes          // transform each argument in sequence
   return runWithInterceptors(args')
 catch:
   return runFilters(err)    // yields IpcErrorResponse, not an uncaught Electron error
@@ -67,7 +67,7 @@ Pipeline overview: [Middleware pipeline](/en/guide/middleware).
 ### Pipe
 
 Same global → class → method order.  
-**Only transforms `args[0]`** (remaining invoke arguments pass through unchanged). Design assumption: primary payload is the first invoke argument.
+**Each argument is transformed in turn**: every Pipe runs once per element of `args`, and `context.index` / `context.argCount` tell it which one it is handling. A Pipe that only cares about the primary payload returns non-zero indices unchanged.
 
 ### Interceptor (Onion Model)
 

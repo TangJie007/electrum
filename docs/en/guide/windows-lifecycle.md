@@ -183,7 +183,9 @@ Implement optional interfaces on classes that enter DI:
 | `onAppReady` | When the application is ready |
 | `onModuleDestroy` | On teardown / exit cleanup |
 
-Exact order: `onModuleInit` → `onAppReady`; on exit, `onModuleDestroy` runs (tied into `before-quit` cleanup).
+Exact order: `onModuleInit` → `onAppReady`, both **serially** (a throwing instance is logged and does not interrupt the rest).
+
+On exit, `container.dispose()` invokes `onModuleDestroy()` / `dispose()` / `onDispose()` in **reverse creation order**, covering class Providers and `useFactory` products; only then are IPC / app events torn down and windows destroyed. `request`-scoped instances are excluded from global hooks—they are destroyed when their request scope ends.
 
 ## Next Steps
 

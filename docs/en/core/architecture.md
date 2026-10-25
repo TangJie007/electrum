@@ -111,7 +111,7 @@ Using `file:read` as an example (see `examples/basic`):
 2. `IpcBridge` reads `@Controller('file')` + `@IpcHandle('read')` → channel `file:read`
 3. Renderer calls `invoke('file:read', path)`
 4. `ipcMain.handle` → `MiddlewarePipeline.execute`
-5. Guard → Pipe(args[0]) → Interceptor onion → `FileController.read(...)`
+5. Guard → Pipe (each argument) → Interceptor onion → `FileController.read(...)`
 6. Service is injected into Controller fields via `@Inject` during resolve
 7. Exceptions are shaped by Filter into `{ __error: true, code, message }`
 

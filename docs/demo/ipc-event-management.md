@@ -114,7 +114,7 @@ start() 第 4 步：IpcBridge.registerAll()          ← 后
    ipcMain.handle('app:info') 回调
      → MiddlewarePipeline.execute({ type:'handle', ... })
           ├─ Guard  （全局 → 类 → 方法）任一 false → ForbiddenException
-          ├─ Pipe   （全局 → 类 → 方法）只变换 args[0]
+          ├─ Pipe   （全局 → 类 → 方法）逐个参数变换
           ├─ Interceptor（全局 → 类 → 方法）洋葱包裹
           │     └─ instance.getInfo(...args)
           └─ catch → Filter（方法 → 类 → 全局）→ IpcErrorResponse
@@ -252,20 +252,24 @@ preload: isIpcErrorPayload(result) → throw new IpcError(code, message, details
 ```
 for (plugin of plugins) await plugin.destroy?.(app)   ← 按注册顺序
   ↓
-runHook('onModuleDestroy')  ← 业务自己关 watcher / 断连接
+container.dispose()   ← 逆序回调 onModuleDestroy / dispose / onDispose
   ↓
-ipcBridge.unregisterAll()
+ipcBridge.unregisterAll()    ← removeHandler + 逐个 removeListener
   ↓
 eventBridge.unregisterAll()
+  ↓
+windowManager.destroyAll()
 ```
 
 ```ts
-// ipc-bridge.ts —— 每个 channel 两边都卸
-for (const channel of this.registeredChannels) {
-  ipcMain.removeHandler(channel)        // @IpcHandle
-  ipcMain.removeAllListeners(channel)   // @IpcOn
+// ipc-bridge.ts —— 只卸本桥接登记过的引用
+for (const [channel, entry] of this.registered) {
+  if (entry.handle) ipcMain.removeHandler(channel)          // @IpcHandle
+  for (const listener of entry.listeners) {                  // @IpcOn
+    ipcMain.removeListener(channel, listener)                // 不用 removeAllListeners
+  }
 }
-this.registeredChannels.clear()
+this.registered.clear()
 ```
 
 只拆本桥接登记过的 channel，不碰应用其它地方挂的 `ipcMain` 监听。`clear()` 保证重复调用安全。

@@ -4,12 +4,16 @@ import {
   readMetadata,
   Logger,
   type InjectionPoint,
+  type InjectionToken,
   type Scope,
 } from '@electrum/common'
 import { ModuleRegistry, type ModuleRelations } from './module-registry'
 
-/** 可被注入 / 注册的标识：类、字符串或 symbol */
-export type Token = Function | string | symbol
+/**
+ * 可被注入 / 注册的标识：类、字符串、symbol，
+ * 或 `createInjectionToken<T>()` 生成的带类型 token。
+ */
+export type Token = InjectionToken<any>
 
 /** `register()` 的可选项 */
 export interface ProviderOptions {
@@ -42,8 +46,6 @@ interface ProviderRecord {
   inject?: Token[]
   scope: Scope
   owner?: Function
-  /** 注册过该 token 的全部模块；同名 token 被多个模块注册时，各模块自己始终可见 */
-  owners?: Set<Function>
 }
 
 /**
@@ -155,19 +157,29 @@ export function unwrapRequestScope<T>(value: T, depth = 0): T {
 }
 
 export class DIContainer {
-  private singletons = new Map<Token, any>()
-  private providers = new Map<Token, ProviderRecord>()
+  /**
+   * 实例缓存以 **Provider 记录** 为键而不是 token。
+   *
+   * 同一个 token（尤其是字符串 token）可能被多个模块各自 provide，Nest 语义下
+   * 它们是不同的 Provider、各有独立实例；用 token 做键会让后注册的模块覆盖前者，
+   * A 模块注入到 B 模块的实现。
+   */
+  private singletons = new Map<ProviderRecord, any>()
+  /** token → 该 token 的全部注册记录（每个归属模块一条，`owner === undefined` 为全局记录） */
+  private providers = new Map<Token, ProviderRecord[]>()
   /**
    * 异步工厂的 in-flight 结果。
-   * 并发的 `resolveAsync` 命中同一 token 时直接复用，避免重复建连接池 / 重复 IO。
+   * 并发的 `resolveAsync` 命中同一 Provider 时直接复用，避免重复建连接池 / 重复 IO。
    */
-  private pending = new Map<Token, Promise<any>>()
+  private pending = new Map<ProviderRecord, Promise<any>>()
+  /** 未 register 的类按 useClass 回退时使用的隐式记录（保证 singleton 语义） */
+  private implicit = new Map<Function, ProviderRecord>()
   /** 容器创建的 singleton，按创建顺序记录，dispose 时逆序销毁 */
   private created: Array<{ token: Token; instance: any }> = []
   private externalResolvers: ExternalResolver[] = []
   private moduleRegistry = new ModuleRegistry()
   private circularStrategy: CircularStrategy = 'throw'
-  private requestStorage = new AsyncLocalStorage<Map<Token, any>>()
+  private requestStorage = new AsyncLocalStorage<Map<ProviderRecord, any>>()
   private windowProvider: (name: string) => any | undefined = () => undefined
   private windowSender: WindowSender = () => undefined
   private disposed = false
@@ -193,21 +205,17 @@ export class DIContainer {
 
   /**
    * 注册一个 Provider。
-   * 同一 token 重复注册会覆盖上一次（`@electrum/testing` 的 override 基于此）。
    *
-   * 覆盖时保留历史 `owners`，让「多个模块各自 providers 同一个 token」时
-   * 每个模块仍能注入自己注册的服务（实例共享最后一份实现，见文档）。
+   * 记录按**归属模块**分开存放（Phase 2）：
+   * - 带 `owner` → 替换该模块上一次注册的同一 token（模块内覆盖）
+   * - 不带 `owner` → 替换「全局记录」，对所有模块生效（`@electrum/testing` 的
+   *   overrideProvider 走这条路径，保持全局覆盖语义）
+   *
+   * 覆盖一定生成**新记录对象**：实例缓存以记录为键，旧实例自然失效
+   * （`created` 里仍保留它，dispose 时照常销毁）。
    */
   register(token: Token, options: ProviderOptions = {}): void {
-    // 覆盖注册意味着「换实现」：必须丢掉旧 singleton，否则 override 后仍拿到旧实例。
-    // created 里保留旧实例，dispose() 时仍会被逆序销毁。
-    this.singletons.delete(token)
-
-    const previous = this.providers.get(token)
-    const owners = previous?.owners ?? new Set<Function>()
-    if (options.owner) owners.add(options.owner)
-
-    this.providers.set(token, {
+    const record: ProviderRecord = {
       token,
       useClass: options.useClass,
       useValue: options.useValue,
@@ -215,11 +223,18 @@ export class DIContainer {
       useFactory: options.useFactory,
       inject: options.inject,
       scope: options.scope || 'singleton',
-      // 覆盖注册（如 testing 的 overrideProvider）不传 owner 时保留原归属，
-      // 否则这个 Provider 会退化成「无 owner」而绕过 exports 校验
-      owner: options.owner ?? previous?.owner,
-      owners,
-    })
+      owner: options.owner,
+    }
+
+    const list = this.providers.get(token)
+    if (!list) {
+      this.providers.set(token, [record])
+      return
+    }
+
+    const index = list.findIndex((entry) => entry.owner === record.owner)
+    if (index >= 0) list[index] = record
+    else list.push(record)
   }
 
   /** 登记模块的 imports / exports / global 关系，启用 exports 可见性校验 */
@@ -255,46 +270,48 @@ export class DIContainer {
    * @param token Provider token 或 Class
    * @param fromModule 消费方模块（可选）。提供后会校验 exports 可见性
    */
-  resolve<T = any>(token: Token, fromModule?: Function): T {
+  resolve<T = any>(token: InjectionToken<T>, fromModule?: Function): T {
     this.assertNotDisposed()
-    return this.resolveInternal<T>(token, fromModule, [])
+    return this.resolveInternal<T>(token as Token, fromModule, [])
   }
 
   private resolveInternal<T>(token: Token, fromModule: Function | undefined, chain: Token[]): T {
     const external = this.findExternalResolver(token)
     if (external) return external.resolve(token) as T
 
-    if (this.singletons.has(token)) {
-      this.assertVisible(token, fromModule)
-      return this.singletons.get(token)
-    }
+    const record = this.recordFor(token, fromModule)
+    if (!record) throw this.notFoundError(token, fromModule)
 
-    const record = this.providers.get(token)
+    if (this.singletons.has(record)) return this.singletons.get(record)
 
     // useValue：常量 / 配置对象，无构造过程（含显式 undefined）
-    if (record?.hasValue) {
-      this.assertVisible(token, fromModule)
-      if (record.scope === 'singleton') this.singletons.set(token, record.useValue)
+    if (record.hasValue) {
+      if (record.scope === 'singleton') this.singletons.set(record, record.useValue)
       return record.useValue
     }
 
     // 已有异步构建在进行：同步路径再构造一次会产出重复的 singleton
-    if (this.pending.has(token)) {
+    if (this.pending.has(record)) {
       throw new Error(
-        `Provider ${this.formatToken(token)} is being resolved asynchronously right now. ` +
+        `Provider ${formatToken(token)} is being resolved asynchronously right now. ` +
           `Await that resolveAsync() call instead of mixing resolve() into it.`,
       )
     }
 
     // useFactory：先 resolve inject 列表，再调工厂函数
-    if (record?.useFactory) {
-      this.assertVisible(token, fromModule)
+    if (record.useFactory) {
+      // request 作用域：同一次请求内复用同一个产物（工厂也要有作用域语义）
+      if (record.scope === 'request') {
+        const cached = this.readRequestCache(record)
+        if (cached.hit) return cached.value
+      }
 
       // 工厂的 inject 列表同样可能成环（A.inject=[B] / B.inject=[A]），
       // 不检测就会一路递归到栈溢出，这里与类路径共用同一条解析链
       if (chain.includes(token)) throw this.circularError(token, chain)
 
-      const owner = this.consumerFor(record, fromModule)
+      // Provider 的依赖要按「它自己所属模块」校验可见性，而不是按调用方
+      const owner = record.owner ?? fromModule
       chain.push(token)
       let instance: any
       try {
@@ -307,15 +324,15 @@ export class DIContainer {
       }
 
       if (record.scope === 'singleton') {
-        this.singletons.set(token, instance)
+        this.singletons.set(record, instance)
         this.track(token, instance)
       }
+      if (record.scope === 'request') return this.writeRequestCache(record, instance)
       return instance
     }
 
     // request 作用域：返回代理，每次访问落到「当前请求」的实例
-    if (record?.scope === 'request' && this.hasClassTarget(token, record)) {
-      this.assertVisible(token, fromModule)
+    if (record.scope === 'request' && this.hasClassTarget(token, record)) {
       return this.createRequestProxy<T>(token, record, fromModule)
     }
 
@@ -326,9 +343,9 @@ export class DIContainer {
    * 异步解析：与 `resolve()` 语义一致，但支持返回 Promise 的 `useFactory`。
    * 应用启动（Application.start）与 IPC 运行时都走这条路径。
    */
-  async resolveAsync<T = any>(token: Token, fromModule?: Function): Promise<T> {
+  async resolveAsync<T = any>(token: InjectionToken<T>, fromModule?: Function): Promise<T> {
     this.assertNotDisposed()
-    return this.resolveAsyncInternal<T>(token, fromModule, [])
+    return this.resolveAsyncInternal<T>(token as Token, fromModule, [])
   }
 
   private async resolveAsyncInternal<T>(
@@ -339,56 +356,57 @@ export class DIContainer {
     const external = this.findExternalResolver(token)
     if (external) return external.resolve(token) as T
 
-    if (this.singletons.has(token)) {
-      this.assertVisible(token, fromModule)
-      return this.singletons.get(token)
-    }
+    const record = this.recordFor(token, fromModule)
+    if (!record) throw this.notFoundError(token, fromModule)
 
-    const record = this.providers.get(token)
+    if (this.singletons.has(record)) return this.singletons.get(record)
 
-    if (record?.hasValue) {
-      this.assertVisible(token, fromModule)
-      if (record.scope === 'singleton') this.singletons.set(token, record.useValue)
+    if (record.hasValue) {
+      if (record.scope === 'singleton') this.singletons.set(record, record.useValue)
       return record.useValue
     }
 
     // 环依赖判定必须早于 in-flight 复用：否则 A → B → A 会 await 自己的 Promise 而死锁
     if (chain.includes(token)) {
-      if (this.circularStrategy === 'resolve' && this.singletons.has(token)) {
-        return this.singletons.get(token)
+      if (this.circularStrategy === 'resolve' && this.singletons.has(record)) {
+        return this.singletons.get(record)
       }
       throw this.circularError(token, chain)
     }
 
-    if (record?.scope === 'request' && this.hasClassTarget(token, record)) {
-      this.assertVisible(token, fromModule)
+    if (record.scope === 'request' && this.hasClassTarget(token, record)) {
       return this.createRequestProxy<T>(token, record, fromModule)
     }
 
-    const scope = record?.scope ?? 'singleton'
+    // request 作用域：同一请求内复用工厂产物
+    if (record.scope === 'request') {
+      const cached = this.readRequestCache(record)
+      if (cached.hit) return cached.value
+    }
 
-    // 可见性校验必须早于 in-flight 复用：否则 B 模块在 A 模块构建同一 token
-    // 期间调用 resolveAsync，会直接拿到 A 的 Promise，绕过 exports 隔离。
-    this.assertVisible(token, fromModule)
-
-    // 同一 token 的并发异步解析只构建一次。
-    // transient 的语义是「每次解析一个新实例」，因此不参与去重。
-    if (scope !== 'transient') {
-      const inflight = this.pending.get(token)
+    // 同一 Provider 的并发异步解析只构建一次。
+    // transient 的语义是「每次解析一个新实例」，request 属于「每次请求一个」，
+    // 跨请求共用 in-flight Promise 会把上一个请求的实例泄漏给下一个，因此都不去重。
+    if (record.scope !== 'transient' && record.scope !== 'request') {
+      const inflight = this.pending.get(record)
       if (inflight) return inflight
     }
 
-    const task = record?.useFactory
+    const task = record.useFactory
       ? this.buildFactoryAsync<T>(token, record, fromModule, chain)
       : this.buildInstanceAsync<T>(token, record, fromModule, chain)
 
-    if (scope === 'transient') return task
+    if (record.scope === 'transient') return task
 
-    this.pending.set(token, task)
+    if (record.scope === 'request') {
+      return this.writeRequestCache(record, await task)
+    }
+
+    this.pending.set(record, task)
     try {
       return await task
     } finally {
-      this.pending.delete(token)
+      this.pending.delete(record)
     }
   }
 
@@ -399,7 +417,7 @@ export class DIContainer {
     fromModule: Function | undefined,
     chain: Token[],
   ): Promise<T> {
-    const owner = this.consumerFor(record, fromModule)
+    const owner = record.owner ?? fromModule
 
     chain.push(token)
     try {
@@ -410,7 +428,7 @@ export class DIContainer {
 
       const instance = await record.useFactory!(...args)
       if (record.scope === 'singleton') {
-        this.singletons.set(token, instance)
+        this.singletons.set(record, instance)
         this.track(token, instance)
       }
       return instance
@@ -422,25 +440,23 @@ export class DIContainer {
   /** 同步构建类实例 + 属性注入 */
   private buildInstance<T>(
     token: Token,
-    record: ProviderRecord | undefined,
+    record: ProviderRecord,
     fromModule: Function | undefined,
     chain: Token[],
   ): T {
-    const targetClass = record?.useClass || (typeof token === 'function' ? token : null)
+    const targetClass = record.useClass || (typeof token === 'function' ? token : null)
     if (!targetClass) throw this.notFoundError(token, fromModule)
-
-    this.assertVisible(token, fromModule)
 
     if (chain.includes(token)) {
       // 属性注入允许「先建壳再填字段」，因此环依赖可以复用未填充完成的实例
-      if (this.circularStrategy === 'resolve' && this.singletons.has(token)) {
-        return this.singletons.get(token)
+      if (this.circularStrategy === 'resolve' && this.singletons.has(record)) {
+        return this.singletons.get(record)
       }
       throw this.circularError(token, chain)
     }
 
-    const scope = record?.scope || 'singleton'
-    const owner = this.consumerFor(record, fromModule)
+    const scope = record.scope
+    const owner = record.owner ?? fromModule
     // 只有开启环依赖容错时才提前入缓存，让内层能拿到未填充完成的实例
     const earlyCache = scope === 'singleton' && this.circularStrategy === 'resolve'
 
@@ -449,7 +465,7 @@ export class DIContainer {
     try {
       // 构造放在 try 内：构造函数抛错时也要回滚 chain 与缓存
       instance = new (targetClass as any)()
-      if (earlyCache) this.singletons.set(token, instance)
+      if (earlyCache) this.singletons.set(record, instance)
 
       const { injections, ctx } = this.readInjections(targetClass, owner)
       for (const injection of injections) {
@@ -457,14 +473,14 @@ export class DIContainer {
         if (value !== SKIP) instance[injection.propertyKey] = value
       }
     } catch (err) {
-      if (earlyCache) this.singletons.delete(token)
+      if (earlyCache) this.singletons.delete(record)
       throw err
     } finally {
       chain.pop()
     }
 
     if (scope === 'singleton') {
-      this.singletons.set(token, instance)
+      this.singletons.set(record, instance)
       // 容器只接管 singleton 的生命周期；transient / request 由持有者或作用域负责
       this.track(token, instance)
     }
@@ -475,31 +491,29 @@ export class DIContainer {
   /** 异步构建类实例 + 属性注入（依赖可能是异步工厂） */
   private async buildInstanceAsync<T>(
     token: Token,
-    record: ProviderRecord | undefined,
+    record: ProviderRecord,
     fromModule: Function | undefined,
     chain: Token[],
   ): Promise<T> {
-    const targetClass = record?.useClass || (typeof token === 'function' ? token : null)
+    const targetClass = record.useClass || (typeof token === 'function' ? token : null)
     if (!targetClass) throw this.notFoundError(token, fromModule)
 
-    this.assertVisible(token, fromModule)
-
     if (chain.includes(token)) {
-      if (this.circularStrategy === 'resolve' && this.singletons.has(token)) {
-        return this.singletons.get(token)
+      if (this.circularStrategy === 'resolve' && this.singletons.has(record)) {
+        return this.singletons.get(record)
       }
       throw this.circularError(token, chain)
     }
 
-    const scope = record?.scope || 'singleton'
-    const owner = this.consumerFor(record, fromModule)
+    const scope = record.scope
+    const owner = record.owner ?? fromModule
     const earlyCache = scope === 'singleton' && this.circularStrategy === 'resolve'
 
     chain.push(token)
     let instance: any
     try {
       instance = new (targetClass as any)()
-      if (earlyCache) this.singletons.set(token, instance)
+      if (earlyCache) this.singletons.set(record, instance)
 
       const { injections, ctx } = this.readInjections(targetClass, owner)
       for (const injection of injections) {
@@ -507,14 +521,14 @@ export class DIContainer {
         if (value !== SKIP) instance[injection.propertyKey] = value
       }
     } catch (err) {
-      if (earlyCache) this.singletons.delete(token)
+      if (earlyCache) this.singletons.delete(record)
       throw err
     } finally {
       chain.pop()
     }
 
     if (scope === 'singleton') {
-      this.singletons.set(token, instance)
+      this.singletons.set(record, instance)
       this.track(token, instance)
     }
 
@@ -606,12 +620,12 @@ export class DIContainer {
 
   /** 在请求作用域内执行 fn；作用域内解析到的 request-scoped 实例彼此共享 */
   runInRequestScope<T>(fn: () => T): T {
-    return this.requestStorage.run(new Map<Token, any>(), fn)
+    return this.requestStorage.run(new Map<ProviderRecord, any>(), fn)
   }
 
   /** 同 `runInRequestScope`，但在结束后销毁本次请求创建的实例 */
   async runInRequestScopeAsync<T>(fn: () => T | Promise<T>): Promise<T> {
-    const store = new Map<Token, any>()
+    const store = new Map<ProviderRecord, any>()
     try {
       return await this.requestStorage.run(store, () => Promise.resolve(fn()))
     } finally {
@@ -636,15 +650,15 @@ export class DIContainer {
       const store = this.requestStorage.getStore()
       if (!store) {
         throw new Error(
-          `Request-scoped provider ${this.formatToken(token)} was accessed outside of a request scope. ` +
+          `Request-scoped provider ${formatToken(token)} was accessed outside of a request scope. ` +
             `Wrap the call with container.runInRequestScope() — IPC handlers do this automatically.`,
         )
       }
-      if (!store.has(token)) {
-        // 每次请求独立一条解析链，互不干扰
-        store.set(token, this.buildInstance(token, record, fromModule, []))
+      if (!store.has(record)) {
+        // 每次请求独立一条解析链，互不干扰；按 Provider 记录隔离同名 token
+        store.set(record, this.buildInstance(token, record, fromModule, []))
       }
-      return store.get(token)
+      return store.get(record)
     }
 
     const shell = Object.create((targetClass as any).prototype)
@@ -681,18 +695,18 @@ export class DIContainer {
     }) as T
   }
 
-  private async disposeScopeInstances(store: Map<Token, any>): Promise<void> {
+  private async disposeScopeInstances(store: Map<ProviderRecord, any>): Promise<void> {
     // 与创建顺序相反地销毁：后建的先拆，避免先拆掉被依赖的一方
     const instances = [...store.values()].reverse()
     store.clear()
 
     for (const instance of instances) {
-      const disposeFn = this.pickDisposeFn(instance)
-      if (!disposeFn) continue
-      try {
-        await disposeFn()
-      } catch (err: any) {
-        this.logger.error(`Request scope dispose failed: ${err?.message || err}`)
+      for (const disposeFn of this.pickDisposeFns(instance)) {
+        try {
+          await disposeFn()
+        } catch (err: any) {
+          this.logger.error(`Request scope dispose failed: ${err?.message || err}`)
+        }
       }
     }
   }
@@ -700,8 +714,13 @@ export class DIContainer {
   // ───────────────────────────── 销毁 ─────────────────────────────
 
   /**
-   * 逆序销毁容器创建的实例（调用其 `dispose()` 或 `onDispose()`）。
-   * Application.shutdown 在 `onModuleDestroy` 之后调用。
+   * 逆序销毁容器创建的实例。
+   *
+   * 依次尝试 `onModuleDestroy()` → `dispose()` → `onDispose()`：
+   * 前两者是 Nest / 本框架通用的清理钩子；`onDispose` 兼容早期写法。
+   *
+   * 工厂（`useFactory`）产出的实例同样被 track，因此连接池这类资源即使
+   * 不是类 Provider 也能被正确释放。
    */
   async dispose(): Promise<void> {
     if (this.disposed) return
@@ -709,48 +728,60 @@ export class DIContainer {
 
     for (let i = this.created.length - 1; i >= 0; i--) {
       const { instance } = this.created[i]
-      const disposeFn = this.pickDisposeFn(instance)
-      if (!disposeFn) continue
-      try {
-        await disposeFn()
-      } catch (err: any) {
-        this.logger.error(`Dispose failed: ${err?.message || err}`)
+      for (const disposeFn of this.pickDisposeFns(instance)) {
+        try {
+          await disposeFn()
+        } catch (err: any) {
+          this.logger.error(`Dispose failed: ${err?.message || err}`)
+        }
       }
     }
 
     this.created = []
     this.singletons.clear()
     this.pending.clear()
+    this.implicit.clear()
   }
 
-  private pickDisposeFn(instance: any): (() => any) | null {
-    if (instance == null) return null
-    if (typeof instance.dispose === 'function') return () => instance.dispose()
-    if (typeof instance.onDispose === 'function') return () => instance.onDispose()
-    return null
+  private pickDisposeFns(instance: any): Array<() => any> {
+    if (instance == null) return []
+
+    const fns: Array<() => any> = []
+    if (typeof instance.onModuleDestroy === 'function') {
+      fns.push(() => instance.onModuleDestroy())
+    }
+    if (typeof instance.dispose === 'function') fns.push(() => instance.dispose())
+    if (typeof instance.onDispose === 'function') fns.push(() => instance.onDispose())
+    return fns
   }
 
   // ───────────────────────────── 查询 ─────────────────────────────
 
   /** 该 token 是否已有 singleton 实例（用于「只销毁已创建实例」这类场景） */
   isInstantiated(token: Token): boolean {
-    return this.singletons.has(token)
+    const list = this.providers.get(token)
+    if (list?.some((record) => this.singletons.has(record))) return true
+
+    const implicit = typeof token === 'function' ? this.implicit.get(token) : undefined
+    return !!implicit && this.singletons.has(implicit)
   }
 
   /**
    * 该 token 的作用域；未注册的类按 singleton 处理。
    *
-   * 供中间件预编译使用：只有 singleton 才能安全缓存实例，
-   * request / transient 必须每次请求重新解析。
+   * 同名 token 可能被多个模块以不同 scope 注册，这里取最后注册的一条
+   * （中间件预编译只需要一个保守判断：非 singleton 一律不缓存实例）。
    */
   getScope(token: Token): Scope {
-    return this.providers.get(token)?.scope ?? 'singleton'
+    const list = this.providers.get(token)
+    return list?.[list.length - 1]?.scope ?? 'singleton'
   }
 
   /** 是否「注册过」该 token（不含未 register 的 Class 回退） */
   has(token: Token): boolean {
     if (this.findExternalResolver(token)) return true
-    return this.providers.has(token) || this.singletons.has(token)
+    if (this.providers.has(token)) return true
+    return typeof token === 'function' && this.implicit.has(token)
   }
 
   /**
@@ -766,42 +797,61 @@ export class DIContainer {
     this.singletons.clear()
     this.providers.clear()
     this.pending.clear()
+    this.implicit.clear()
     this.created = []
     this.moduleRegistry.reset()
     this.disposed = false
+  }
+
+  /** 模块可见性注册表（模块图导出 / 调试用） */
+  getModuleRegistry(): ModuleRegistry {
+    return this.moduleRegistry
+  }
+
+  /** 某模块注册的 Provider（同名 token 在别的模块注册的那条不会被混进来） */
+  getModuleProviders(moduleClass: Function): Array<{ token: Token; scope: Scope }> {
+    const result: Array<{ token: Token; scope: Scope }> = []
+    for (const [token, list] of this.providers) {
+      for (const record of list) {
+        if (record.owner === moduleClass) result.push({ token, scope: record.scope })
+      }
+    }
+    return result
   }
 
   /** 依赖图结构化数据，便于测试与自定义输出 */
   getDependencyGraph(): DependencyNode[] {
     const nodes: DependencyNode[] = []
 
-    for (const [token, record] of this.providers) {
-      const dependencies: string[] = []
+    for (const [token, list] of this.providers) {
+      for (const record of list) {
+        const dependencies: string[] = []
 
-      if (record.useFactory) {
-        for (const dep of record.inject || []) dependencies.push(this.formatToken(dep))
-      } else {
-        const targetClass =
-          record.useClass || (typeof token === 'function' ? token : null)
-        if (targetClass) {
-          const injections =
-            readMetadata<InjectionPoint[]>(targetClass, META.INJECTIONS) || []
-          for (const injection of injections) {
-            dependencies.push(
-              injection.type === 'window'
-                ? `@WindowRef(${injection.windowName})`
-                : this.formatToken(injection.token),
-            )
+        if (record.useFactory) {
+          for (const dep of record.inject || []) dependencies.push(formatToken(dep))
+        } else {
+          const targetClass =
+            record.useClass || (typeof token === 'function' ? token : null)
+          if (targetClass) {
+            const injections =
+              readMetadata<InjectionPoint[]>(targetClass, META.INJECTIONS) || []
+            for (const injection of injections) {
+              dependencies.push(
+                injection.type === 'window'
+                  ? `@WindowRef(${injection.windowName})`
+                  : formatToken(injection.token),
+              )
+            }
           }
         }
-      }
 
-      nodes.push({
-        token: this.formatToken(token),
-        scope: record.scope,
-        owner: record.owner?.name || '',
-        dependencies,
-      })
+        nodes.push({
+          token: formatToken(token),
+          scope: record.scope,
+          owner: record.owner?.name || '',
+          dependencies,
+        })
+      }
     }
 
     return nodes
@@ -834,39 +884,66 @@ export class DIContainer {
   }
 
   /**
-   * 解析某 Provider 的注入点时，消费方是它所属的模块。
+   * 选出生效的 Provider 记录（模块级隔离的核心）。
    *
-   * 同名 token 被多个模块注册时优先用调用方模块：它的依赖应按真实注册方校验，
-   * 而不是被最后注册者「抢走」的 owner。
+   * 优先级：
+   * 1. 全局记录（`owner === undefined`）：手工 `register` / testing override，对所有模块生效
+   * 2. 消费方模块自己注册的记录
+   * 3. 消费方可见（exports / `@Global()` / 转发）的其他模块记录
+   * 4. 没有 `fromModule`（`app.resolve` 等内部调用）时取最后注册的一条
+   *
+   * 都不可见时**抛错**而不是回退到 class 构造，否则 exports 校验会被绕过。
    */
-  private consumerFor(
-    record: ProviderRecord | undefined,
-    fromModule: Function | undefined,
-  ): Function | undefined {
-    if (fromModule && record?.owners?.has(fromModule)) return fromModule
-    return record?.owner ?? fromModule
+  private selectRecord(token: Token, fromModule?: Function): ProviderRecord | undefined {
+    const list = this.providers.get(token)
+    if (!list || list.length === 0) return undefined
+
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (!list[i].owner) return list[i]
+    }
+
+    if (!fromModule) return list[list.length - 1]
+
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (list[i].owner === fromModule) return list[i]
+    }
+
+    for (const record of list) {
+      if (record.owner && this.moduleRegistry.canSee(fromModule, record.owner, token)) {
+        return record
+      }
+    }
+
+    throw this.visibilityError(token, fromModule, list)
   }
 
-  private assertVisible(token: Token, fromModule?: Function): void {
-    if (!fromModule) return
+  /** 未 register 的类按 useClass 构造时使用的隐式记录（保证 singleton 语义） */
+  private implicitRecord(token: Token): ProviderRecord | undefined {
+    if (typeof token !== 'function') return undefined
 
-    const record = this.providers.get(token)
-    if (!record) return
+    let record = this.implicit.get(token)
+    if (!record) {
+      record = { token, useClass: token, hasValue: false, scope: 'singleton' }
+      this.implicit.set(token, record)
+    }
+    return record
+  }
 
-    // 同名 token 被多个模块注册时，注册过它的模块都能注入自己那份（实例共享）
-    if (record.owners?.has(fromModule)) return
+  /** 解析用记录：优先已注册记录，其次未注册类的回退记录 */
+  private recordFor(token: Token, fromModule?: Function): ProviderRecord | undefined {
+    return this.selectRecord(token, fromModule) ?? this.implicitRecord(token)
+  }
 
-    // 手工 register 的 Provider 没有归属模块，不做可见性限制
-    if (!record.owner) return
-
-    if (this.moduleRegistry.canSee(fromModule, record.owner, token)) return
-
-    // owner 必定也在 owners 里，合并后一定有值
-    const declaredIn = [...new Set([...(record.owners ?? []), record.owner])]
-      .map((mod) => mod.name)
+  private visibilityError(
+    token: Token,
+    fromModule: Function,
+    list: ProviderRecord[],
+  ): Error {
+    const declaredIn = list
+      .map((record) => record.owner?.name || '<manual>')
       .join(', ')
-    throw new Error(
-      `Provider ${this.formatToken(token)} is not visible from ${fromModule.name}. ` +
+    return new Error(
+      `Provider ${formatToken(token)} is not visible from ${fromModule.name}. ` +
         `It is declared in ${declaredIn}; add it to that module's "exports" array ` +
         `and make sure ${fromModule.name} imports it.`,
     )
@@ -879,11 +956,24 @@ export class DIContainer {
   private assertSyncValue<T>(value: T, token: Token): T {
     if (value instanceof Promise) {
       throw new Error(
-        `Provider ${this.formatToken(token)} resolved to a Promise. ` +
+        `Provider ${formatToken(token)} resolved to a Promise. ` +
           `Use container.resolveAsync() instead of container.resolve().`,
       )
     }
     return value
+  }
+
+  /** 读取当前请求作用域里缓存的实例；无作用域时视为未命中 */
+  private readRequestCache(record: ProviderRecord): { hit: boolean; value?: any } {
+    const store = this.requestStorage.getStore()
+    if (!store || !store.has(record)) return { hit: false }
+    return { hit: true, value: store.get(record) }
+  }
+
+  /** 把实例写进当前请求作用域（无作用域时原样返回，退化为 transient） */
+  private writeRequestCache(record: ProviderRecord, instance: any): any {
+    this.requestStorage.getStore()?.set(record, instance)
+    return instance
   }
 
   private notFoundError(token: Token, fromModule?: Function): Error {
@@ -891,7 +981,7 @@ export class DIContainer {
       ? ` (required by ${fromModule.name})`
       : ''
     return new Error(
-      `No provider found for token: ${this.formatToken(token)}${where}. ` +
+      `No provider found for token: ${formatToken(token)}${where}. ` +
         `Add it to the "providers" array of a @Module` +
         (fromModule ? ` imported by ${fromModule.name}` : '') +
         `. Current graph:\n${this.printDependencyGraph(GRAPH_PREVIEW_LIMIT)}`,
@@ -899,7 +989,7 @@ export class DIContainer {
   }
 
   private circularError(token: Token, chain: Token[]): Error {
-    const path = [...chain, token].map((t) => this.formatToken(t)).join(' → ')
+    const path = [...chain, token].map((t) => formatToken(t)).join(' → ')
     return new Error(
       `Circular dependency detected: ${path}. ` +
         `Property injection can break the cycle — call container.setCircularStrategy('resolve').`,
@@ -925,9 +1015,11 @@ export class DIContainer {
     }
   }
 
-  private formatToken(token: Token): string {
-    if (typeof token === 'function') return token.name || '<anonymous>'
-    if (typeof token === 'string') return `"${token}"`
-    return String(token)
-  }
+}
+
+/** token 的可读表示：类名 / `"字符串"` / `Symbol(...)` */
+export function formatToken(token: Token): string {
+  if (typeof token === 'function') return token.name || '<anonymous>'
+  if (typeof token === 'string') return `"${token}"`
+  return String(token)
 }

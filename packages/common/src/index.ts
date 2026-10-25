@@ -8,7 +8,7 @@ export {
   ownMetadataArray,
 } from './constants/metadata-keys'
 
-export { Module, Global } from './decorators/module.decorator'
+export { Module, Global, createInjectionToken } from './decorators/module.decorator'
 export type {
   ModuleMetadata,
   Provider,
@@ -16,6 +16,7 @@ export type {
   ClassProvider,
   FactoryProvider,
   InjectionToken,
+  TypedInjectionToken,
 } from './decorators/module.decorator'
 
 export { Injectable } from './decorators/injectable.decorator'
@@ -52,7 +53,7 @@ export { Catch } from './decorators/catch.decorator'
 
 export type { CanActivate, IpcContext } from './guards/guard.interface'
 export type { NestInterceptor } from './interceptors/interceptor.interface'
-export type { PipeTransform } from './pipes/pipe.interface'
+export type { PipeTransform, PipeContext } from './pipes/pipe.interface'
 export type { ExceptionFilter } from './filters/filter.interface'
 
 export {

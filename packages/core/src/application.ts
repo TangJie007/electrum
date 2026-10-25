@@ -1,7 +1,8 @@
-import { Logger } from '@electrum/common'
+import { Logger, type InjectionToken } from '@electrum/common'
 import { app as electronApp } from 'electron'
 import { DIContainer } from './di/container'
 import { ModuleScanner, type ScannedModule } from './module/scanner'
+import { buildModuleGraph, toMermaid, type ModuleGraph } from './module/graph'
 import { MiddlewarePipeline } from './middleware/pipeline'
 import { IpcBridge } from './bridge/ipc-bridge'
 import { EventBridge } from './bridge/event-bridge'
@@ -91,13 +92,36 @@ export class Application {
   }
 
   /** 手动从容器取实例（调试 / 插件扩展用）。图中有异步工厂时请用 `resolveAsync` */
-  resolve<T>(token: Function | string | symbol): T {
+  resolve<T>(token: InjectionToken<T>): T {
     return this.container.resolve<T>(token)
   }
 
   /** 异步取实例：支持返回 Promise 的 `useFactory` */
-  async resolveAsync<T>(token: Function | string | symbol): Promise<T> {
+  async resolveAsync<T>(token: InjectionToken<T>): Promise<T> {
     return this.container.resolveAsync<T>(token)
+  }
+
+  /**
+   * 模块图（JSON 结构）：模块、imports / exports 关系、每个模块注册的 Provider。
+   *
+   * 只读容器，不实例化任何东西；`start()` 之前调用返回空图。
+   */
+  getModuleGraph(): ModuleGraph {
+    return buildModuleGraph(
+      this.scannedModules,
+      this.container.getModuleRegistry(),
+      this.container,
+    )
+  }
+
+  /** 模块图的 mermaid 源码（可贴进文档或控制台排查依赖方向） */
+  printModuleGraph(): string {
+    return toMermaid(this.getModuleGraph())
+  }
+
+  /** 扫描结果快照（`start()` 之后可用；调试 / 测试用） */
+  getScannedModules(): readonly ScannedModule[] {
+    return this.scannedModules
   }
 
   getWindowManager(): WindowManager {
@@ -182,8 +206,12 @@ export class Application {
   /**
    * 应用退出清理（幂等）。
    *
-   * 顺序：插件 destroy → onModuleDestroy → 销毁实例 → 拆 IPC / AppEvent → 关窗口。
-   * 返回值可直接 await，`before-quit` 与手动调用共用同一次执行。
+   * 顺序：插件 destroy → 销毁实例（onModuleDestroy / dispose，逆创建序）→
+   * 拆 IPC / AppEvent → 关窗口。
+   *
+   * 这里不再单独调 `lifecycle.runHook('onModuleDestroy')`：容器按**逆创建序**
+   * 统一回调 `onModuleDestroy`，既覆盖类 Provider，也覆盖 `useFactory` 产出的
+   * 实例（连接池等），且不会出现类 Provider 被销毁两次。
    */
   async shutdown(): Promise<void> {
     if (this.shutdownPromise) return this.shutdownPromise
@@ -203,12 +231,13 @@ export class Application {
       }
     }
 
-    await this.lifecycle?.runHook('onModuleDestroy')
-    // 钩子跑完后再销毁实例（关闭连接 / 定时器），最后才拆桥接
+    // 逆序销毁实例并回调 onModuleDestroy（关闭连接 / 定时器），最后才拆桥接
     await this.container.dispose()
     this.ipcBridge?.unregisterAll()
     this.eventBridge?.unregisterAll()
     this.windowManager.destroyAll()
+    // 关闭后模块图已无意义，清空避免 getModuleGraph() 返回陈旧快照
+    this.scannedModules = []
   }
 
   private async runPluginReady(plugin: Plugin): Promise<void> {

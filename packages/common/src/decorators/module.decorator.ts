@@ -1,19 +1,26 @@
 import { META } from '../constants/metadata-keys'
+import type { Scope } from './injectable.decorator'
 
 export interface ValueProvider {
   provide: InjectionToken
   useValue: any
+  /** 只有 `useValue` 常量时一般不需要；显式声明可让配置对象按请求/瞬时重建 */
+  scope?: Scope
 }
 
 export interface ClassProvider {
   provide: InjectionToken
   useClass: Function
+  /** 未声明时继承 `useClass` 上的 `@Injectable({ scope })` */
+  scope?: Scope
 }
 
 export interface FactoryProvider {
   provide: InjectionToken
   useFactory: (...args: any[]) => any
   inject?: InjectionToken[]
+  /** 工厂的实例作用域（singleton / transient / request），默认 singleton */
+  scope?: Scope
 }
 
 export type Provider =
@@ -22,8 +29,43 @@ export type Provider =
   | ClassProvider
   | FactoryProvider
 
-/** Provider / 注入用的 token：类、字符串或 symbol */
-export type InjectionToken = Function | string | symbol
+/** 仅存在于类型层的 token 标记，用户无法伪造 */
+declare const INJECTION_TOKEN_TYPE: unique symbol
+
+/**
+ * `createInjectionToken<T>()` 的返回类型：运行时是 symbol，类型上携带 `T`。
+ */
+export interface TypedInjectionToken<T> {
+  readonly [INJECTION_TOKEN_TYPE]: T
+  readonly description: string
+}
+
+/**
+ * Provider / 注入用的 token：类、字符串、symbol 或 `createInjectionToken()` 的结果。
+ *
+ * 泛型参数只影响**类型推断**（`container.resolve(TOKEN)` 拿到的就是 `T`），
+ * 运行时仍然是 symbol，`Map` 键语义与手写 `Symbol.for()` 完全一致。
+ *
+ * ```ts
+ * const USER_REPO = createInjectionToken<UserRepository>('UserRepository')
+ * const repo = app.resolve(USER_REPO)   // repo: UserRepository
+ * ```
+ */
+export type InjectionToken<T = unknown> =
+  | Function
+  | string
+  | symbol
+  | TypedInjectionToken<T>
+
+/**
+ * 创建带类型的注入 token。
+ *
+ * 用 `Symbol.for()` 保证同名 token 在热重载 / 多份模块副本间仍是同一个键；
+ * 描述同时用于错误信息与依赖图输出。
+ */
+export function createInjectionToken<T = unknown>(description: string): InjectionToken<T> {
+  return Symbol.for(`electrum:token:${description}`) as unknown as TypedInjectionToken<T>
+}
 
 export interface ModuleMetadata {
   /** 导入的子模块；扫描时先 walk imports，再注册本模块 */

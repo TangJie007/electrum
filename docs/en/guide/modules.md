@@ -125,7 +125,32 @@ The order of `@Global()` and `@Module()` on the class does not matter.
 
 Note: a global module must still be `imports`-ed **once** by a module the scanner actually reaches (usually the root module). Otherwise the scanner never visits it and its Providers are never registered. `@Global()` removes the per-consumer import, not the need to be scanned.
 
-> **Duplicate tokens**: when two modules register the same token, each module can inject the one it registered, but the **instance is shared** (the last registration wins). Nest keeps a separate injector per module; Electrum does not isolate instances yet—prefer string/symbol prefixes for same-named tokens.
+> **Duplicate tokens**: when two modules register the same token, **each keeps its own instance** (matching Nest's per-module injector): `AModule` injects the one it registered and `BModule` injects the one it registered—they no longer collide, and "last registration wins" no longer applies.
+>
+> The exception is a **global registration without `owner`** (manual `container.register()` / `overrideProvider` from `@electrum/testing`): it has the highest priority and applies to every module—which is exactly what test overrides rely on.
+
+### Startup-time static validation
+
+After registering all Providers, `ModuleScanner` validates the module graph once, turning "misconfigured but only fails at call time" problems into startup errors:
+
+| Check | On failure |
+|---|---|
+| Every token in `exports` is actually provided by the module itself or its `imports` subtree | Throws at startup (a typo'd token is no longer silently ignored) |
+| Every module listed in `exports: [OtherModule]` is actually in `imports` | Throws at startup (re-exporting a module that was never imported is meaningless) |
+
+### Exporting the module graph
+
+When debugging circular dependencies or checking for a missing `exports` entry, dump the scan result directly:
+
+```ts
+const app = createApp(AppModule)
+await app.start()
+
+app.getModuleGraph()    // structured JSON: modules / edges (import, export-module) / providers
+app.printModuleGraph()  // mermaid source, ready to paste into docs or render as a diagram
+```
+
+`getModuleGraph()` only reads the container and instantiates nothing; it returns an empty graph before `start()` and is cleared after `shutdown()` so you never get a stale snapshot.
 
 > `ModuleRegistry` (the class implementing this visibility check) is an internal part of `@electrum/core`, held privately by `DIContainer`. Application code only declares `@Module({ exports })` / `@Global()`—it never needs to and **should not** instantiate or call `ModuleRegistry` directly.
 

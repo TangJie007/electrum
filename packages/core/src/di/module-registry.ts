@@ -47,6 +47,21 @@ export class ModuleRegistry {
     return this.globals.has(moduleClass)
   }
 
+  /** 已登记的模块类（按登记顺序） */
+  listModules(): Function[] {
+    return [...this.imports.keys()]
+  }
+
+  /** 该模块声明的 imports */
+  importsOf(moduleClass: Function): Function[] {
+    return [...(this.imports.get(moduleClass) || [])]
+  }
+
+  /** 该模块声明的 exports */
+  exportsOf(moduleClass: Function): Token[] {
+    return [...(this.exports.get(moduleClass) || [])]
+  }
+
   /**
    * consumer 模块能否看见 owner 模块下的 token。
    *

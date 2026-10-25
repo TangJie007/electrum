@@ -61,6 +61,32 @@ resolve does the work: new Cls() → read @Inject → recursively resolve → as
 | `@Optional()` | Inject only if the token **can be resolved**, otherwise skip the field (no throw); a class token is constructed even if it was never added to `providers` |
 | `@WindowRef(name)` | Inject the `BrowserWindow` named `name` |
 
+## Typed tokens
+
+String / symbol tokens lose their type at the token itself: `@Inject('API_URL')` relies on the field annotation, and `app.resolve('API_URL')` infers `unknown`. `createInjectionToken<T>()` produces a token that is **a symbol at runtime and carries `T` in the type system**:
+
+```ts
+import { createInjectionToken } from '@electrum/common'
+
+export const USER_REPO = createInjectionToken<UserRepository>('UserRepository')
+
+@Module({ providers: [{ provide: USER_REPO, useClass: SqliteUserRepository }] })
+export class UserModule {}
+
+@Injectable()
+export class UserService {
+  @Inject(USER_REPO) repo!: UserRepository   // type comes from the token; typos fail to compile
+}
+
+const repo = app.resolve(USER_REPO)          // repo: UserRepository
+```
+
+- Backed by `Symbol.for('electrum:token:<description>')`, so the same name is still the same key across hot reloads / duplicated module copies
+- `description` shows up in error messages and dependency graphs—use the interface name
+- When sharing across packages, export the result of `createInjectionToken()` from a shared package so the type has a single declaration
+
+`InjectionToken<T>` is the union of all these forms (`Function | string | symbol | TypedInjectionToken<T>`); `@Inject`, `app.resolve`, `app.resolveAsync` and a provider's `provide` all accept it.
+
 ## Custom Providers
 
 Besides plain classes (`providers: [UserService]`), three object forms are supported. Pattern: `provide` is the injection **token**; the rest says how to produce the value.
@@ -237,6 +263,27 @@ Key points:
 - **Built once under concurrency**: concurrent `resolveAsync` calls for the same singleton token share one Promise; `transient` is excluded from deduplication and builds a new instance every time.
 - **Factory `inject` lists are cycle-checked too**: `A.inject=[B]` / `B.inject=[A]` reports `Circular dependency detected: A → B → A` instead of overflowing the stack or deadlocking.
 
+### Factory scope
+
+Object providers may declare `scope` explicitly (`useValue` / `useClass` / `useFactory` all have the field):
+
+```ts
+@Module({
+  providers: [
+    // Re-run the factory on every resolve
+    { provide: 'DB_CONN', scope: 'transient', useFactory: () => connect() },
+    // Reuse one product within a single IPC / AppEvent call
+    { provide: 'REQUEST_ID', scope: 'request', useFactory: () => crypto.randomUUID() },
+  ],
+})
+export class AppModule {}
+```
+
+- `useFactory` + `scope: 'request'`: the same factory product is reused within one request; it is disposed in reverse creation order when the request ends (`dispose()` / `onDispose()` / `onModuleDestroy`); it is not shared across requests and does not participate in singleton in-flight Promise deduplication
+- `useFactory` + `scope: 'transient'`: the factory runs on every resolve
+- `useClass` inherits `@Injectable({ scope })` from the implementation class when no `scope` is given
+- `useValue` with `scope` is rarely useful: the value is the same reference, only the cache location changes
+
 ### Choosing a form
 
 ```
@@ -312,7 +359,7 @@ setInterval(() => {
 }, 60_000)
 ```
 
-- When the scope ends, instances created during it are disposed in **reverse creation order** (`dispose()` or `onDispose()`).
+- When the scope ends, instances created during it are disposed in **reverse creation order** (`onModuleDestroy()` / `dispose()` / `onDispose()`).
 - Accessing a request-scoped Provider outside a scope throws `was accessed outside of a request scope`—that is by design, not a bug.
 - ⚠️ The sync variant `runInRequestScope()` does **not** dispose what it creates; it exists for the framework's internal sync paths. Application code should always use `runInRequestScopeAsync()`.
 
@@ -345,7 +392,7 @@ DI dependency graph (12 providers):
 Two more things worth knowing:
 
 - **Circular dependencies** throw by default and the message includes the full chain `A → B → A`. If two providers genuinely need each other (bidirectional callbacks), call `container.setCircularStrategy('resolve')` to reuse the "shell created, fields not yet filled" instance—some fields may still be `undefined` when you receive it.
-- **Disposal**: the container owns singleton lifetime only. On `dispose()` it calls each instance's `dispose()` / `onDispose()` in reverse creation order; `transient` and `request` instances are owned by whoever holds them or by the request scope.
+- **Disposal**: on `dispose()` the container invokes each instance's `onModuleDestroy()` / `dispose()` / `onDispose()` in reverse creation order (whichever exist; all of them if several do), covering class Providers and `useFactory` products. `transient` instances live as long as their creator; `request` instances are destroyed by the request scope when it ends.
 
 ## Hands-On DI
 

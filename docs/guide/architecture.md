@@ -70,7 +70,7 @@ createApp(AppModule)
   ├─ 7. plugin.ready?.()
   │
   └─ 8. before-quit → shutdown
-        · plugin.destroy → onModuleDestroy → container.dispose() → unregisterAll
+        · plugin.destroy → container.dispose()（逆序回调 onModuleDestroy）→ unregisterAll
 ```
 
 **硬约束：先窗口，再 IPC。**  
@@ -142,7 +142,7 @@ createApp(AppModule)
 - 支持 `useClass` / `useValue` / `useFactory`（工厂可返回 Promise，走 `resolveAsync`）
 - 作用域：`scope: 'singleton' | 'transient' | 'request'`
 - 环依赖默认抛错并给出完整链路，可 `setCircularStrategy('resolve')` 转为复用未填充实例
-- `dispose()` 按创建逆序销毁（`dispose()` / `onDispose()`）
+- `dispose()` 按创建逆序销毁（`onModuleDestroy()` / `dispose()` / `onDispose()`）
 
 教学示例见 `examples/di`；正式扫描注册见 `ModuleScanner`。
 
@@ -152,7 +152,7 @@ createApp(AppModule)
 
 ```
 Guard（全局 → 类 → 方法）
-  → Pipe（变换 args[0]）
+  → Pipe（逐参数变换 args）
     → Interceptor（洋葱模型）
       → Controller 方法
         → 异常时 Filter（方法 → 类 → 全局）

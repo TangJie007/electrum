@@ -70,7 +70,7 @@ createApp(AppModule)
   ├─ 7. plugin.ready?.()
   │
   └─ 8. before-quit → shutdown
-        · plugin.destroy → onModuleDestroy → container.dispose() → unregisterAll
+        · plugin.destroy → container.dispose() (reverse onModuleDestroy) → unregisterAll
 ```
 
 **Hard rule: windows before IPC.**  
@@ -142,7 +142,7 @@ Push (main → renderer):
 - Supports `useClass` / `useValue` / `useFactory` (factories may return a Promise; resolve via `resolveAsync`)
 - Scopes: `scope: 'singleton' | 'transient' | 'request'`
 - Cycles throw by default with the full chain; `setCircularStrategy('resolve')` switches to reusing the shell instance
-- `dispose()` tears instances down in reverse creation order (`dispose()` / `onDispose()`)
+- `dispose()` tears instances down in reverse creation order (`onModuleDestroy()` / `dispose()` / `onDispose()`)
 
 See `examples/di` for a walkthrough; production registration is via `ModuleScanner`.
 
@@ -152,7 +152,7 @@ For `@IpcHandle`:
 
 ```
 Guard (global → class → method)
-  → Pipe (transform args[0])
+  → Pipe (per-argument transform)
     → Interceptor (onion)
       → Controller method
         → on throw: Filter (method → class → global)

@@ -182,7 +182,9 @@ onAllClosed() {
 | `onAppReady` | 应用就绪时 |
 | `onModuleDestroy` | 销毁 / 退出清理 |
 
-具体触发顺序：`onModuleInit` → `onAppReady`；退出时走 `onModuleDestroy`（与 `before-quit` 清理相衔接）。
+具体触发顺序：`onModuleInit` → `onAppReady`，两者**串行**执行（单个实例抛错只记日志，不打断其余实例）。
+
+退出时由 `container.dispose()` 按**创建逆序**回调 `onModuleDestroy()` / `dispose()` / `onDispose()`，覆盖类 Provider 与 `useFactory` 产物；随后才拆 IPC / app 事件、关窗口。`request` 作用域实例不参与全局钩子，它们随请求作用域结束单独销毁。
 
 ## 下一步
 

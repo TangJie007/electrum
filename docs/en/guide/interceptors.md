@@ -3,7 +3,7 @@
 Interceptors wrap Controller methods in an **onion model**: logic runs before and after `next()`, can observe input context, rewrite return values, or apply unified handling on failure before rethrowing.
 
 They run after Guard / Pipe, outside the business method (wrapping the call).  
-They **do not** handle access control ([Guard](./guards)), and **do not** specifically transform `args[0]` ([Pipe](./pipes)).
+They **do not** handle access control ([Guard](./guards)), and **do not** transform arguments one by one ([Pipe](./pipes)).
 
 See [Middleware Pipeline](./middleware) for an overview.
 

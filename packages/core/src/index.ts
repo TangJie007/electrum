@@ -2,7 +2,7 @@ import '@electrum/common'
 
 export { Application, createApp } from './application'
 
-export { DIContainer } from './di/container'
+export { DIContainer, formatToken } from './di/container'
 export type {
   Token,
   ProviderOptions,
@@ -14,6 +14,13 @@ export { ModuleRegistry } from './di/module-registry'
 export type { ModuleRelations } from './di/module-registry'
 export { ModuleScanner } from './module/scanner'
 export type { ScannedModule } from './module/scanner'
+export { buildModuleGraph, toMermaid } from './module/graph'
+export type {
+  ModuleGraph,
+  ModuleGraphNode,
+  ModuleGraphEdge,
+  ModuleGraphProvider,
+} from './module/graph'
 
 export { IpcBridge } from './bridge/ipc-bridge'
 export { EventBridge } from './bridge/event-bridge'
@@ -32,6 +39,7 @@ export {
   getClassMetadata,
   Module,
   Global,
+  createInjectionToken,
   Injectable,
   Controller,
   IpcHandle,
@@ -61,6 +69,7 @@ export type {
   ClassProvider,
   FactoryProvider,
   InjectionToken,
+  TypedInjectionToken,
   InjectableOptions,
   Scope,
   IpcHandlerEntry,
@@ -77,6 +86,7 @@ export type {
   IpcContext,
   NestInterceptor,
   PipeTransform,
+  PipeContext,
   ExceptionFilter,
   IpcErrorResponse,
   LogLevel,

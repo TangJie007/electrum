@@ -1,0 +1,34 @@
+﻿node : [33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-no
+de-api-deprecated for more details.[39m
+所在位置 C:\Users\Administrator\AppData\Local\Temp\genie-ps-1792914867838-3v4ypo.ps1:954 字符: 39
++ ... kages\core; node node_modules\vitest\vitest.mjs run src/__tests__/di. ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([33mThe CJS bu...e details.[39m:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+[1m[46m RUN [49m[22m [36mv3.2.7 [39m[90mE:/project/electrum/packages/core[39m
+
+[1m[43m DEPRECATED [49m[22m [33m'basic' reporter is deprecated and will be removed in Vitest v3.
+Remove 'basic' from 'reporters' option. To match 'basic' reporter 100%, use configuration:
+{
+  "test": {
+    "reporters": [
+      [
+        "default",
+        {
+          "summary": false
+        }
+      ]
+    ]
+  }
+}[39m
+ [32m✓[39m src/__tests__/scanner.spec.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m src/__tests__/di.spec.ts [2m([22m[2m27 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+
+
+[2m Test Files [22m [1m[32m2 passed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[32m41 passed[39m[22m[90m (41)[39m
+[2m   Start at [22m 15:54:29
+[2m   Duration [22m 608ms[2m (transform 193ms, setup 0ms, collect 395ms, tests 23ms, environment 0ms, prepare 245ms)[22m
+

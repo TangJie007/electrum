@@ -3,7 +3,7 @@
 Interceptor 以**洋葱模型**包裹 Controller 方法：在 `next()` 前后插入逻辑，可观察入参上下文、改写返回值，或在失败时做统一处理后再抛出。
 
 它跑在 Guard / Pipe **之后**、业务方法之外（包住调用）。  
-**不**做准入（[Guard](./guards)）、**不**专门改造 `args[0]`（[Pipe](./pipes)）。
+**不**做准入（[Guard](./guards)）、**不**逐参数改造 `args`（[Pipe](./pipes)）。
 
 总览见 [中间件管道](./middleware)。
 

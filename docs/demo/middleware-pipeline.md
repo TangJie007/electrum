@@ -24,7 +24,7 @@ return this.pipeline.execute({
 Guard（全局 → 类 → 方法）
   → 任一返回 false / 抛错 → 中止（常见 ForbiddenException）
 Pipe（全局 → 类 → 方法）
-  → 依次变换 args[0]（第一个业务参数）
+  → 逐个变换 args 中的每个参数
 Interceptor（全局 → 类 → 方法，洋葱模型）
   → 最内层调用 Controller 方法
 Controller：instance[method](...args)

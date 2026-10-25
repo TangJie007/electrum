@@ -50,7 +50,7 @@ Electrum 是「基于 TypeScript 5 Stage 3 原生装饰器的 Electron 主进程
 
 **职责**：对齐 NestJS 的 `@nestjs/common`。TS5 原生装饰器把元数据写进 `Symbol.metadata`，外加接口、异常与 Logger。`dependencies` 为空，peerDeps 只有 `typescript >=5.2`。
 
-**入口导出**（`src/index.ts`）：`METADATA_READY`、`META`、`readMetadata`/`getClassMetadata`、10 个装饰器模块（`@Module`、`@Injectable`、`@Controller`、`@IpcHandle`/`@IpcOn`、`@Inject`/`@Optional`、`Use*` 四个中间件装饰器、`@WindowDeclaration`、`@WindowRef`、`@IpcEmit`、`@AppEvent`）、4 个中间件接口、3 个生命周期接口、4 个异常类、`Logger`，类型 `ModuleMetadata`/`Provider` 一族与 `InjectionToken`。
+**入口导出**（`src/index.ts`）：`METADATA_READY`、`META`、`readMetadata`/`getClassMetadata`/`ownMetadataArray`、11 个装饰器模块（`@Module`、`@Injectable`、`@Controller`、`@IpcHandle`/`@IpcOn`、`@Inject`/`@Optional`、`Use*` 四个中间件装饰器、`@Catch`、`@WindowDeclaration`、`@WindowRef`、`@IpcEmit`、`@AppEvent`）、4 个中间件接口、3 个生命周期接口、4 个异常类、`Logger`，`createInjectionToken()`，类型 `ModuleMetadata`/`Provider` 一族、`InjectionToken<T>`/`TypedInjectionToken<T>`。
 注意 `index.ts` 首行是 `import './polyfill'`，保证 `Symbol.metadata` 在任何装饰器求值前就绪。
 
 ### 文件树与重要性
@@ -63,13 +63,18 @@ packages/common/
 └─ src/
    ├─ index.ts                             A  包唯一公共入口；首行 import './polyfill' 不可删
    ├─ polyfill.ts                          A  Symbol.metadata ??= Symbol.for(...)，必须最先执行
-   ├─ constants/metadata-keys.ts           A  META（16 个 Symbol.for 键）+ readMetadata/getClassMetadata
-   │                                          跨包元数据的唯一约定，10 个装饰器模块全部依赖
+   ├─ constants/metadata-keys.ts           A  META（含 CATCH）+ readMetadata/getClassMetadata（带 WeakMap 缓存）
+   │                                          + ownMetadataArray（写时复制，避免原型链上的父类数组被子类污染）
+   │                                          跨包元数据的唯一约定，11 个装饰器模块全部依赖
    ├─ decorators/module.decorator.ts       A  @Module + @Global + ModuleMetadata / Provider / ValueProvider /
-   │                                          ClassProvider / FactoryProvider / InjectionToken
+   │                                          ClassProvider / FactoryProvider / InjectionToken<T> /
+   │                                          TypedInjectionToken<T> / createInjectionToken<T>()
    │                                          （模块树契约；`exports` 是 Provider 可见性白名单，
-   │                                          不写即私有；`global` 等价 @Global()）
-   ├─ decorators/inject.decorator.ts       B  @Inject / @Optional + InjectionPoint（被 ipc-emit、window-ref 复用）
+   │                                          不写即私有；`global` 等价 @Global()；`scope` 三种形态都支持）
+   ├─ decorators/inject.decorator.ts       B  @Inject / @Optional + InjectionPoint（被 ipc-emit、window-ref 复用）；
+   │                                          数组读取走 ownMetadataArray，@Optional 替换元素而非原地改
+   ├─ decorators/catch.decorator.ts        B  @Catch(...exceptions)：写入 META.CATCH，供 Filter 按异常类型分派；
+   │                                          空列表 = catch-all
    ├─ decorators/injectable.decorator.ts   B  @Injectable + Scope/InjectableOptions（scope 决定 DI 缓存策略，
    │                                          `singleton | transient | request`）
    ├─ decorators/controller.decorator.ts   B  @Controller(prefix | options)，prefix 决定 IPC channel 前缀
@@ -89,7 +94,7 @@ packages/common/
    ├─ lifecycle/interfaces.ts              D  纯类型：OnModuleInit / OnAppReady / OnModuleDestroy
    ├─ error/error-response.ts              D  纯类型：IpcErrorResponse（__error/code/message/stack/details）
    ├─ interceptors/interceptor.interface.ts D 纯类型：NestInterceptor
-   ├─ pipes/pipe.interface.ts              D  纯类型：PipeTransform
+   ├─ pipes/pipe.interface.ts              D  纯类型：PipeTransform + PipeContext（IpcContext + index/argCount/args）
    ├─ filters/filter.interface.ts          D  纯类型：ExceptionFilter
    └─ __tests__/logger.spec.ts             E  唯一单测
 ```
@@ -100,7 +105,7 @@ packages/common/
 
 **职责**：对齐 `@nestjs/core`。读取 `common` 写入的 `Symbol.metadata`，建 DI 容器、扫模块树、绑定 `ipcMain`/`app.on`/`BrowserWindow`、跑中间件链与生命周期钩子。peerDeps：`electron >=20`、`typescript >=5.2`。
 
-**入口导出**（`src/index.ts`）：`Application`/`createApp`、`DIContainer`、`ModuleRegistry`、`ModuleScanner`、`IpcBridge`、`EventBridge`、`MiddlewarePipeline`、`LifecycleManager`、`WindowManager`、`Plugin`，类型 `Token`/`ProviderOptions`/`ExternalResolver`/`CircularStrategy`/`DependencyNode`，并 re-export 全部 common 公共 API（业务代码更推荐直接从 `@electrum/common` 导入装饰器）。
+**入口导出**（`src/index.ts`）：`Application`/`createApp`、`DIContainer`、`formatToken`、`ModuleRegistry`、`ModuleScanner`、`buildModuleGraph`/`toMermaid`、`IpcBridge`、`EventBridge`、`MiddlewarePipeline`、`LifecycleManager`、`WindowManager`、`Plugin`，类型 `Token`/`ProviderOptions`/`ExternalResolver`/`CircularStrategy`/`DependencyNode`/`ModuleGraph` 一族/`PipelineExecutionContext`，并 re-export 全部 common 公共 API（业务代码更推荐直接从 `@electrum/common` 导入装饰器）。
 
 ### 文件树与重要性
 
@@ -112,47 +117,70 @@ packages/core/
 └─ src/
    ├─ index.ts                             A  包唯一公共入口（tsup 唯一 entry）
    ├─ application.ts                       A  Application / createApp
-   │                                          start() 固定 7 步编排：扫描→ready→建窗→IPC(await)→事件(await)→
-   │                                          钩子→插件；shutdown 顺序：插件 destroy→onModuleDestroy→
-   │                                          container.dispose()→拆桥接
+   │                                          start() 幂等 + 并发复用（starting Promise），失败走 rollbackStart()；
+   │                                          固定 7 步编排：扫描→ready→建窗→IPC(await)→事件(await)→
+   │                                          钩子→插件；shutdown 顺序：插件 destroy→container.dispose()
+   │                                          （内部逆序回调 onModuleDestroy）→拆桥接→destroyAll()
+   │                                          暴露 resolve/resolveAsync、getModuleGraph/printModuleGraph、
+   │                                          getScannedModules（shutdown 后清空）
    ├─ di/container.ts                      A  DIContainer：register/resolve/resolveAsync、singleton 缓存、
    │                                          并发安全（同一 token 的异步构建只跑一次，transient 不参与去重；
    │                                          异步构建期间调 resolve() 直接报错）、环依赖检测与
    │                                          setCircularStrategy（类构造链与 useFactory 的 inject 链共用一条
    │                                          解析链，环必须早于 in-flight 复用判定）、覆盖注册丢弃旧 singleton、
-   │                                          request 作用域(runInRequestScope*)、dispose 逆序销毁、
-   │                                          ExternalResolver 插件点、依赖图诊断(printDependencyGraph)
+   │                                          request 作用域(runInRequestScope*，工厂 provider 也支持
+   │                                          scope:'request')、dispose 逆序销毁(onModuleDestroy/dispose/
+   │                                          onDispose)、ExternalResolver 插件点、依赖图诊断、
+   │                                          formatToken（模块级导出）、unwrapRequestScope（IPC 出口展开代理，
+   │                                          structuredClone 不接受 Proxy）、getModuleProviders/getScope
    │                                          支持 @Inject/@WindowRef/@IpcEmit/@Optional 属性注入
    │                                          （@Optional 走 canResolve：未 register 的 Class 也算可解析）
-   │                                          —— 包内被引用 7 次，是全仓最高频文件
+   │                                          —— 包内被引用 9 次，是全仓最高频文件
    ├─ di/module-registry.ts                B  ModuleRegistry：模块 imports/exports/global 关系登记 +
    │                                          canSee() 可见性判定（Nest 语义：默认私有、exports 逐层
-   │                                          re-export 可写 token 或模块类、@Global 免 imports 但仍需 exports）
+   │                                          re-export 可写 token 或模块类、@Global 免 imports 但仍需 exports）；
+   │                                          canSee 三级 Map 缓存，register()/reset() 失效；
+   │                                          listModules/importsOf/exportsOf 供模块图导出
    ├─ module/scanner.ts                    A  ModuleScanner + ScannedModule
-   │                                          DFS 遍历 @Module 树并边扫边注册 Provider（带 owner，被引用 5 次）；
-   │                                          `{ provide, useClass }` 形态同样继承 useClass 上的 @Injectable scope
+   │                                          DFS 遍历 @Module 树并边扫边注册 Provider（带 owner，被引用 6 次）；
+   │                                          `{ provide, useClass }` 形态同样继承 useClass 上的 @Injectable scope；
+   │                                          declaredTokens 记录每个模块声明过的 token，walk() 后跑
+   │                                          validateGraph()：exports 的 token 必须由自身或 imports 子树提供、
+   │                                          exports:[OtherModule] 必须真的 import
+   ├─ module/graph.ts                      C  buildModuleGraph（modules/edges/providers 只读快照）+
+   │                                          toMermaid（flowchart TD；实线 import、虚线 export-module）
    ├─ middleware/pipeline.ts               B  Guard → Pipe → Interceptor（洋葱模型）→ Filter
-   │                                          execute / executeGuardOnly；中间件类走 resolveAsync 解析
+   │                                          execute / executeGuardOnly；中间件类走 resolveAsync 解析；
+   │                                          预编译 PipelinePlan（version 缓存，编译失败即清缓存）；
+   │                                          Pipe 逐参数执行并回写 args，context 带 index/argCount；
+   │                                          Filter 按 @Catch 类型分派（未命中回落内置序列化）；
+   │                                          出口 unwrapRequestScope(result)
    ├─ bridge/ipc-bridge.ts                 B  @IpcHandle → ipcMain.handle、@IpcOn → ipcMain.on
    │                                          registerAll() 为 async（resolveAsync 解析 Controller）；
-   │                                          channel 去重与 unregisterAll；每次调用包一层 request 作用域
+   │                                          channel 去重与 unregisterAll（removeHandler + 逐个
+   │                                          removeListener，绝不 removeAllListeners）；
+   │                                          每次调用包一层 request 作用域
    ├─ bridge/event-bridge.ts               C  @AppEvent → app.on（ready / window-all-closed 等）；
    │                                          registerAll() 为 async，回调包一层 request 作用域，带错误兜底与卸载
-   ├─ window/manager.ts                    C  @WindowDeclaration 建 BrowserWindow、devUrl/prodFile、sendTo/broadcast
-   ├─ lifecycle/manager.ts                 C  onModuleInit / onAppReady / onModuleDestroy，Promise.allSettled 容错；
-   │                                          onModuleDestroy 只处理已创建实例，同一实例钩子只跑一次
+   ├─ window/manager.ts                    C  @WindowDeclaration 建 BrowserWindow、devUrl/prodFile、sendTo/broadcast；
+   │                                          同名窗口复用（存活则返回并 warn）、尊重 show:false、
+   │                                          加载中 sendTo 排队到 did-finish-load、destroyAll()
+   ├─ lifecycle/manager.ts                 C  onModuleInit / onAppReady / onModuleDestroy，串行 await + try/catch
+   │                                          （单个失败只记日志）；onModuleDestroy 逆序且只处理已创建实例，
+   │                                          跳过 scope === 'request' 的 Provider，同一实例钩子只跑一次
    ├─ plugin/plugin.interface.ts           D  纯类型：Plugin（name/install/ready/destroy）
-   └─ __tests__/*.spec.ts                  E  8 个单测（application / di / event-bridge / lifecycle /
-                                              metadata / pipeline / scanner / window-manager）
+   └─ __tests__/*.spec.ts                  E  11 个单测（application / di / event-bridge / integration /
+                                              lifecycle / metadata / module-graph / pipeline /
+                                              runtime-hardening / scanner / window-manager）
 ```
 
 ### core 内部引用热度（排除 `__tests__` 与 `dist`）
 
 | 被引文件 | 次数 | 引用方 |
 |---|---|---|
-| `di/container.ts` | **7** | application, scanner, pipeline, ipc-bridge, event-bridge, window/manager, lifecycle/manager |
-| `module/scanner.ts` | **5** | application, window/manager, lifecycle/manager, ipc-bridge, event-bridge |
-| `di/module-registry.ts` | 1 | di/container（私有持有；`index.ts` 有导出，但仅供诊断/扩展，业务方只用 `@Module({ exports })`） |
+| `di/container.ts` | **9** | application, index, scanner, module/graph, pipeline, ipc-bridge, event-bridge, window/manager, lifecycle/manager |
+| `module/scanner.ts` | **6** | application, index, window/manager, lifecycle/manager, ipc-bridge, event-bridge |
+| `di/module-registry.ts` | 1 + 1 类型 | di/container（私有持有）+ module/graph（仅 `import type`）；`index.ts` 有导出，但仅供诊断/扩展，业务方只用 `@Module({ exports })` |
 | `application.ts` | 2 | index.ts, plugin/plugin.interface.ts |
 | `middleware/pipeline.ts` | 2 | application, ipc-bridge |
 | `bridge/*`、`window/manager`、`lifecycle/manager` | 各 1 | 仅 application.ts |
@@ -278,8 +306,8 @@ packages/testing/
    `common/src/**` 内禁止引入 `electron`、`@electrum/core` 或任何运行时依赖。
 2. **A 级文件改动需全链路回归**：
    - `common/src/constants/metadata-keys.ts`（META 键集合）—— 影响 10 个装饰器模块 + core 6 个消费者 + codegen + testing。
-   - `core/src/di/container.ts`（注入语义：作用域 / 可见性 / 销毁 / 环依赖策略）—— 包内被引用 7 次，
-     改动需回归 `__tests__/di.spec.ts` 与 `scanner.spec.ts`。
+   - `core/src/di/container.ts`（注入语义：作用域 / 可见性 / 销毁 / 环依赖策略）—— 包内被引用 9 次，
+     改动需回归 `__tests__/di.spec.ts`、`scanner.spec.ts`、`runtime-hardening.spec.ts` 与 `integration.spec.ts`。
    - `common/src/polyfill.ts` 与两个 `index.ts` 的**首行 import 顺序不可动**，否则 `Symbol.metadata` 会在装饰器求值后才就绪。
 3. **新增能力优先落 C/D 级**：新装饰器放 `common/src/decorators/`，对应执行逻辑放 `core/src/<domain>/`，并在两个 `index.ts` **同步导出**，否则包外无法引用。
 4. **每个包只有 `src/index.ts` 一个 tsup entry**（`codegen` 额外有 `cli.ts`）。新增对外 API 必须走 `index.ts`，不要新增入口。

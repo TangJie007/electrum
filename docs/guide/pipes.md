@@ -2,7 +2,7 @@
 
 Pipe 负责**变换（或校验）业务参数**：在 Guard 通过之后、Interceptor / 业务方法之前，对 `invoke` 传入的载荷做 `transform`。
 
-当前实现约定：**依次变换 `args[0]`**（多参数时后几个原样保留）。设计假设主业务载荷放在第一个参数。
+管线会**逐个参数**调用 Pipe：`args` 有几个元素，每个 Pipe 就执行几次，`context.index` 标明当前是第几个参数。多参处理方法不会再让第二个以后的参数绕过校验。
 
 Pipe **不**决定能不能进（那是 [Guard](./guards)）、**不**包装整个调用（那是 [Interceptor](./interceptors)）。
 
@@ -11,13 +11,23 @@ Pipe **不**决定能不能进（那是 [Guard](./guards)）、**不**包装整�
 ## 接口
 
 ```ts
-import type { PipeTransform, IpcContext } from '@electrum/common'
+import type { PipeTransform, PipeContext } from '@electrum/common'
 
-transform(value: any, context: IpcContext): any | Promise<any>
+transform(value: any, context: PipeContext): any | Promise<any>
 ```
 
-- `value`：当前的 `args[0]`（上一 Pipe 的输出会成为下一 Pipe 的输入）
-- `context`：同 Guard，含 `channel` / `event` / `args` 等
+- `value`：当前参数的值（上一 Pipe 对同一参数的输出会成为下一 Pipe 的输入）
+- `context`：在 `IpcContext` 基础上多了 `index`（当前参数下标）与 `argCount`（参数总数），
+  另有 `args`（本轮正在被改写的参数数组，能看到前面参数已经变换后的结果）
+
+IPC 没有参数类型元数据，无法像 Nest 那样把 Pipe 绑定到具体参数上，因此默认「每个参数都过一遍」。只关心首个业务载荷的 Pipe 显式跳过即可：
+
+```ts
+transform(value: any, context: PipeContext) {
+  if (context.index !== 0) return value   // 只校验首参
+  return parse(value)
+}
+```
 
 校验失败时抛 `ValidationException`（或其它 `ElectronException`），由 [Filter](./filters) 回传渲染进程。
 
@@ -25,11 +35,11 @@ transform(value: any, context: IpcContext): any | Promise<any>
 
 ```ts
 import { Injectable, UsePipes, Controller, IpcHandle, ValidationException } from '@electrum/common'
-import type { PipeTransform, IpcContext } from '@electrum/common'
+import type { PipeTransform, PipeContext } from '@electrum/common'
 
 @Injectable()
 export class ParseIntPipe implements PipeTransform {
-  transform(value: any, _ctx: IpcContext) {
+  transform(value: any, _ctx: PipeContext) {
     const n = Number(value)
     if (!Number.isInteger(n)) {
       throw new ValidationException('id must be an integer', [{ field: 'id', value }])

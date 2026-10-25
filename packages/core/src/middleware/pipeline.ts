@@ -8,6 +8,7 @@ import {
   type IpcContext,
   type NestInterceptor,
   type PipeTransform,
+  type PipeContext,
   type ExceptionFilter,
   type IpcErrorResponse,
   type MethodMiddlewareEntry,
@@ -211,14 +212,27 @@ export class MiddlewarePipeline {
     }
   }
 
+  /**
+   * 依次执行 Pipe，**逐个参数**变换。
+   *
+   * 早期实现只处理 `args[0]`，多参处理器的其余参数完全绕过校验/转换。
+   * IPC 没有参数类型元数据，因此改为全部参数都过一遍，并在 context 里暴露
+   * `index` / `argCount`；只关心首参的 Pipe 用 `context.index !== 0` 跳过即可。
+   *
+   * 注：`context.args` 指向正在被改写的数组，Pipe 能看到同一轮里前面参数的结果。
+   */
   private async runPipes(plan: PipelinePlan, context: IpcContext): Promise<any[]> {
-    let args = [...context.args]
+    const args = [...context.args]
+    const argCount = args.length
+
     for (const planned of plan.pipes) {
       const pipe = await this.resolvePlanned(planned)
-      if (args.length > 0) {
-        args[0] = await pipe.transform(args[0], context)
+      for (let index = 0; index < argCount; index++) {
+        const pipeContext: PipeContext = { ...context, args, index, argCount }
+        args[index] = await pipe.transform(args[index], pipeContext)
       }
     }
+
     return args
   }
 

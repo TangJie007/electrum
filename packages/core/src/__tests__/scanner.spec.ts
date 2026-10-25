@@ -228,7 +228,7 @@ describe('ModuleScanner — Nest parity', () => {
     expect(container.resolve(Consumer, IsolatedModule).cfg).toBeInstanceOf(GlobalConfig)
   })
 
-  it('lets every module inject a token it registered itself', () => {
+  it('isolates same-token providers per module instead of sharing the last one', () => {
     @Injectable()
     class Shared {}
 
@@ -256,8 +256,50 @@ describe('ModuleScanner — Nest parity', () => {
     const container = new DIContainer()
     new ModuleScanner(container).scan(RootModule)
 
-    expect((container.resolve(UserA, ModuleA).svc as unknown as { tag: string }).tag).toBeDefined()
-    expect((container.resolve(UserB, ModuleB).svc as unknown as { tag: string }).tag).toBeDefined()
+    // 两个模块各自 provide 同一 token：各拿各的实现，互不串味
+    expect((container.resolve(UserA, ModuleA).svc as unknown as { tag: string }).tag).toBe('A')
+    expect((container.resolve(UserB, ModuleB).svc as unknown as { tag: string }).tag).toBe('B')
+  })
+
+  it('keeps one singleton per module for the same token', () => {
+    const valueA = { tag: 'A' }
+    const valueB = { tag: 'B' }
+
+    @Module({ providers: [{ provide: 'TOKEN', useValue: valueA }] })
+    class ModuleA {}
+
+    @Module({ providers: [{ provide: 'TOKEN', useValue: valueB }] })
+    class ModuleB {}
+
+    const container = new DIContainer()
+    new ModuleScanner(container).scan(ModuleA)
+    new ModuleScanner(container).scan(ModuleB)
+
+    expect(container.resolve('TOKEN', ModuleA)).toBe(valueA)
+    expect(container.resolve('TOKEN', ModuleB)).toBe(valueB)
+    // 无模块上下文的解析取最后注册的一条（兼容 app.resolve / 内部工具）
+    expect(container.resolve('TOKEN')).toBe(valueB)
+  })
+
+  it('lets a manual register override every module at once', () => {
+    const override = { tag: 'override' }
+
+    @Injectable()
+    class User {
+      @Inject('TOKEN')
+      svc!: { tag: string }
+    }
+
+    @Module({ providers: [User, { provide: 'TOKEN', useValue: { tag: 'module' } }] })
+    class ModuleA {}
+
+    const container = new DIContainer()
+    new ModuleScanner(container).scan(ModuleA)
+
+    container.register('TOKEN', { useValue: override })
+
+    expect(container.resolve(User, ModuleA).svc).toBe(override)
+    expect(container.resolve('TOKEN', ModuleA)).toBe(override)
   })
 
   it('does not forward Providers that the re-exported module keeps private', () => {
