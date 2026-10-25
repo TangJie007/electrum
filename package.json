@@ -10,7 +10,8 @@
     "test": "turbo run test --filter=@electrum/common --filter=@electrum/core --filter=@electrum/preload --filter=@electrum/client --filter=@electrum/codegen --filter=@electrum/testing",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
-    "docs:preview": "vitepress preview docs"
+    "docs:preview": "vitepress preview docs",
+    "rules:sync": "node scripts/sync-rules.mjs"
   },
   "engines": {
     "node": ">=18"
